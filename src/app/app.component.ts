@@ -181,19 +181,6 @@ export class AppComponent implements AfterViewInit {
     return this.hasHall ? `${this.hallWidth}×${this.hallHeight}` : 'not loaded';
   }
 
-  get hallWorkspaceStyle(): Record<string, string> {
-    if (!this.hasHall || this.strokeWidth === 0) {
-      return {};
-    }
-
-    return {
-      left: `${-this.cfg.viewPortX / this.strokeWidth}px`,
-      top: `${-this.cfg.viewPortY / this.strokeWidth}px`,
-      width: `${this.hallWidth / this.strokeWidth}px`,
-      height: `${this.hallHeight / this.strokeWidth}px`
-    };
-  }
-
   ngAfterViewInit() {
     setTimeout(() => {
       this.zoomAuto();

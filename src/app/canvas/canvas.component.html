@@ -1,4 +1,19 @@
 <ng-container *ngIf="strokeWidth" >
+    <svg:foreignObject
+        *ngIf="hallHtml && hallWidth > 0 && hallHeight > 0"
+        class="hall-background"
+        [attr.x]="0"
+        [attr.y]="0"
+        [attr.width]="hallWidth"
+        [attr.height]="hallHeight"
+    >
+        <div
+            xmlns="http://www.w3.org/1999/xhtml"
+            class="hall-background-content"
+            [innerHTML]="hallHtml"
+        ></div>
+    </svg:foreignObject>
+
     <svg:line
         class="grid"
         [attr.x1]="viewPortX"

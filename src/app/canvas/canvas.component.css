@@ -2,6 +2,27 @@
     background-color:#1e1e1e;
     user-select: none;
 }
+
+:host.has-hall-background {
+    background-color: transparent;
+}
+
+foreignObject.hall-background {
+    pointer-events: none;
+    overflow: visible;
+}
+
+.hall-background-content {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.hall-background-content > * {
+    margin: 0;
+    pointer-events: none;
+}
+
 path {
     stroke:white;
     fill:none;

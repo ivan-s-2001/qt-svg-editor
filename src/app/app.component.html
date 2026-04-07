@@ -482,14 +482,6 @@
             </button>
         </div>
 
-        <div
-            *ngIf="hasHall && hallHtml"
-            class="hall-workspace-layer"
-            [ngStyle]="hallWorkspaceStyle"
-        >
-            <div class="hall-workspace-content" [innerHTML]="hallHtml"></div>
-        </div>
-
         <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -527,6 +519,10 @@
             [(focusedImage)]="focusedImage"
             (cursorPosition)="setCursorPosition($event)"
             (hoverPosition)="setHoverPosition($event)"
+            [hallHtml]="hallHtml"
+            [hallWidth]="hallWidth"
+            [hallHeight]="hallHeight"
+            [hasHallBackground]="hasHall"
         ></svg>
     </div>
 </div>
