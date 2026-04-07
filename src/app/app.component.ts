@@ -113,7 +113,7 @@ const DEFAULT_HALL_CSS = `.hall {position:relative}
       transition(':enter', [])
     ]),
     trigger('leftColumn', [
-      state('*', style({ 'max-width': '310px' })),
+      state('*', style({ 'max-width': '368px' })),
       transition(':enter', [style({ 'max-width': '0' }), animate('100ms ease')]),
       transition(':leave', [animate('100ms ease', style({ 'max-width': '0' }))])
     ])

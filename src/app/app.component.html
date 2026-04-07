@@ -13,391 +13,505 @@
                     <div class="brand-subtitle">Подложка hall и независимые контейнеры</div>
                 </div>
             </div>
-            <app-expandable panelTitle="HTML подложки hall" [panelInfo]="hallPanelInfo" [opened]="true">
-                <div class="row">
-                    <div class="input-block" style="flex-grow:1">
-                        <label>HTML-фрагмент</label>
-                        <textarea
-                            [(ngModel)]="hallFragment"
-                            class="app-input"
-                            style="height:160px;"
-                            placeholder="Вставьте HTML-фрагмент с div.hall"
-                        ></textarea>
+
+            <div class="left-column-content">
+                <div class="panel-overview">
+                    <div class="panel-overview-item">
+                        <div class="panel-overview-label">Сцена</div>
+                        <div class="panel-overview-value">{{hasHall ? (hallWidth + ' × ' + hallHeight) : 'не загружена'}}</div>
+                    </div>
+                    <div class="panel-overview-item">
+                        <div class="panel-overview-label">ViewBox</div>
+                        <div class="panel-overview-value">{{viewBoxes.length}}</div>
+                    </div>
+                    <div class="panel-overview-item">
+                        <div class="panel-overview-label">Активный</div>
+                        <div class="panel-overview-value">{{activeViewBox ? activeViewBox.name : 'не выбран'}}</div>
                     </div>
                 </div>
 
-                <div class="row hall-actions">
-                    <button mat-flat-button color="primary" class="mat-flat-button" (click)="loadHallFragment(hallFragment)">
-                        Загрузить подложку
-                    </button>
-
-                    <button mat-flat-button class="mat-flat-button" (click)="clearHall()">
-                        Очистить
-                    </button>
-                </div>
-
-                <div class="row hall-meta" *ngIf="hasHall">
-                    Рабочая зона: {{hallWidth}} × {{hallHeight}}, начало координат: 0,0
-                </div>
-
-                <div class="row hall-error" *ngIf="hallError">
-                    {{hallError}}
-                </div>
-            </app-expandable>
-
-            <app-expandable panelTitle="ViewBox-контейнеры" [panelInfo]="viewBoxPanelInfo" [opened]="true">
-                <div class="viewbox-form">
-                    <div class="input-block">
-                        <label>X</label>
-                        <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="newViewBox.x">
+                <section class="menu-group">
+                    <div class="menu-group-header">
+                        <div class="menu-group-eyebrow">Глобальные настройки</div>
+                        <div class="menu-group-title">Сцена</div>
+                        <div class="menu-group-description">Подложка hall и управление камерой рабочей области</div>
                     </div>
-                    <div class="input-block">
-                        <label>Y</label>
-                        <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="newViewBox.y">
-                    </div>
-                    <div class="input-block">
-                        <label>Ширина</label>
-                        <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.width">
-                    </div>
-                    <div class="input-block">
-                        <label>Высота</label>
-                        <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.height">
-                    </div>
-                </div>
 
-                <div class="row viewbox-actions">
-                    <button mat-flat-button color="primary" class="mat-flat-button" (click)="createViewBox()" [disabled]="!hasHall || !canCreateViewBox">
-                        Добавить viewBox
-                    </button>
+                    <div class="panel-stack">
+                        <div class="menu-panel-shell">
+                            <app-expandable panelTitle="Подложка hall" [panelInfo]="hallPanelInfo" [opened]="true">
+                                <div class="subsection">
+                                    <div class="subsection-title">HTML подложки</div>
+                                    <div class="row">
+                                        <div class="input-block section-input-fill">
+                                            <label>HTML-фрагмент</label>
+                                            <textarea
+                                                [(ngModel)]="hallFragment"
+                                                class="app-input"
+                                                style="height:160px;"
+                                                placeholder="Вставьте HTML-фрагмент с div.hall"
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                </div>
 
-                    <div class="viewbox-hint" *ngIf="!hasHall">
-                        Сначала загрузите подложку, чтобы размещать viewBox на рабочей области
-                    </div>
-                </div>
+                                <div class="subsection subsection-compact">
+                                    <div class="subsection-title">Действия</div>
+                                    <div class="row hall-actions">
+                                        <button mat-flat-button color="primary" class="mat-flat-button" (click)="loadHallFragment(hallFragment)">
+                                            Загрузить подложку
+                                        </button>
 
-                <div class="viewbox-hint viewbox-select-hint">
-                    Активный viewBox выбирается только из списка ниже
-                </div>
+                                        <button mat-flat-button class="mat-flat-button" (click)="clearHall()">
+                                            Очистить
+                                        </button>
+                                    </div>
+                                </div>
 
-                <div class="viewbox-list" *ngIf="viewBoxes.length > 0; else noViewBoxes">
-                    <div
-                        class="viewbox-card"
-                        *ngFor="let viewBox of viewBoxes; trackBy: trackByViewBoxId"
-                        [class.active]="viewBox.id === activeViewBoxId"
-                        (click)="selectViewBox(viewBox.id)"
-                    >
-                        <div class="viewbox-card-header">
-                            <div>
-                                <div class="viewbox-card-title">{{viewBox.name}}</div>
-                                <div class="viewbox-card-subtitle">{{viewBox.id}}</div>
-                            </div>
-                            <div class="viewbox-card-actions">
-                                <div class="viewbox-card-badge" *ngIf="viewBox.id === activeViewBoxId">активен</div>
-                                <button
-                                    mat-icon-button
-                                    type="button"
-                                    (click)="deleteViewBox(viewBox.id); $event.stopPropagation()"
-                                    matTooltip="Удалить viewBox"
-                                    matTooltipPosition="left"
-                                >
-                                    <mat-icon>delete</mat-icon>
-                                </button>
-                            </div>
+                                <div class="subsection subsection-compact" *ngIf="hasHall || hallError">
+                                    <div class="subsection-title">Состояние</div>
+                                    <div class="row hall-meta" *ngIf="hasHall">
+                                        Рабочая зона: {{hallWidth}} × {{hallHeight}}, начало координат: 0,0
+                                    </div>
+
+                                    <div class="row hall-error" *ngIf="hallError">
+                                        {{hallError}}
+                                    </div>
+                                </div>
+                            </app-expandable>
                         </div>
-                        <div class="viewbox-card-line">Положение: x {{viewBox.x}}, y {{viewBox.y}}</div>
-                        <div class="viewbox-card-line">Размер: {{viewBox.width}} × {{viewBox.height}}</div>
-                        <div class="viewbox-card-line">Локальная область patch: 0,0 · {{viewBox.patch.localViewPort.width}} × {{viewBox.patch.localViewPort.height}}</div>
-                        <div class="viewbox-card-line">Команд в patch: {{viewBox.patch.parsedPath.path.length}}</div>
-                    </div>
-                </div>
 
-                <ng-template #noViewBoxes>
-                    <div class="row viewbox-empty">
-                        Контейнеры viewBox ещё не созданы
-                    </div>
-                </ng-template>
-            </app-expandable>
+                        <div class="menu-panel-shell">
+                            <app-expandable panelTitle="Камера и точность" [opened]="true">
+                                <div class="subsection">
+                                    <div class="subsection-title">Окно просмотра</div>
+                                    <div class="row camera-viewport-grid">
+                                        <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
+                                            <label>X</label>
+                                            <input type="number" step="1" class="app-input" appFormatter [numberValue]="cfg.viewPortX" (numberValueChange)="updateViewPort($event, cfg.viewPortY, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
+                                        </div>
+                                        <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
+                                            <label>Y</label>
+                                            <input type="number" step="1" class="app-input" appFormatter [numberValue]="cfg.viewPortY" (numberValueChange)="updateViewPort(cfg.viewPortX, $event, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
+                                        </div>
+                                        <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
+                                            <label>Ширина</label>
+                                            <input type="number" step="any" min="0.0001" class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortWidth" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, $event, null)" [disabled]="cfg.viewPortLocked">
+                                        </div>
+                                        <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
+                                            <label>Высота</label>
+                                            <input type="number" step="any" min="0.0001" class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortHeight" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, null, $event)" [disabled]="cfg.viewPortLocked">
+                                        </div>
 
-            <app-expandable panelTitle="Выбранный viewBox" [panelInfo]="activeViewBoxPanelInfo" [opened]="true">
-                <ng-container *ngIf="activeViewBox; else noActiveViewBox">
-                    <div class="row active-viewbox-note">
-                        Конструктор patch сейчас работает только внутри {{activeViewBox.name}}
-                    </div>
+                                        <button mat-flat-button (click)="cfg.viewPortLocked = !cfg.viewPortLocked" [matTooltip]="cfg.viewPortLocked ? 'Разблокировать камеру' : 'Заблокировать камеру'" matTooltipPosition="right" class="mat-flat-button camera-lock-button">
+                                            <mat-icon *ngIf="!cfg.viewPortLocked">lock_open</mat-icon>
+                                            <mat-icon *ngIf="cfg.viewPortLocked">lock</mat-icon>
+                                            {{cfg.viewPortLocked ? 'Камера заблокирована' : 'Камера свободна'}}
+                                        </button>
+                                    </div>
+                                </div>
 
-                    <div class="viewbox-form">
-                        <div class="input-block viewbox-name-block">
-                            <label>Имя</label>
-                            <input
-                                class="app-input"
-                                [ngModel]="activeViewBox.name"
-                                (ngModelChange)="updateViewBoxName(activeViewBox.id, $event)"
-                                placeholder="Имя viewBox"
-                            >
-                        </div>
-                        <div class="input-block">
-                            <label>X</label>
-                            <input
-                                type="number"
-                                step="1"
-                                class="app-input"
-                                appFormatter
-                                [numberValue]="activeViewBox.x"
-                                (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'x', $event)"
-                            >
-                        </div>
-                        <div class="input-block">
-                            <label>Y</label>
-                            <input
-                                type="number"
-                                step="1"
-                                class="app-input"
-                                appFormatter
-                                [numberValue]="activeViewBox.y"
-                                (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'y', $event)"
-                            >
-                        </div>
-                        <div class="input-block">
-                            <label>Ширина</label>
-                            <input
-                                type="number"
-                                step="1"
-                                min="1"
-                                class="app-input"
-                                appFormatter
-                                formatterType="positive-integer"
-                                [numberValue]="activeViewBox.width"
-                                (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'width', $event)"
-                            >
-                        </div>
-                        <div class="input-block">
-                            <label>Высота</label>
-                            <input
-                                type="number"
-                                step="1"
-                                min="1"
-                                class="app-input"
-                                appFormatter
-                                formatterType="positive-integer"
-                                [numberValue]="activeViewBox.height"
-                                (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'height', $event)"
-                            >
+                                <div class="subsection subsection-compact">
+                                    <div class="subsection-title">Точность</div>
+                                    <div class="row camera-precision-row">
+                                        <mat-checkbox [(ngModel)]="cfg.snapToGrid" class="camera-checkbox">Привязка к шагу</mat-checkbox>
+                                        <div class="input-block" matTooltip="Сколько знаков оставлять при перемещении точки" matTooltipPosition="right" [matTooltipDisabled]="cfg.snapToGrid" [ngClass]="{'disabled': cfg.snapToGrid }">
+                                            <label>Точность точек</label>
+                                            <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.decimalPrecision" [disabled]="cfg.snapToGrid">
+                                        </div>
+                                    </div>
+                                </div>
+                            </app-expandable>
                         </div>
                     </div>
+                </section>
 
-                    <div class="row active-viewbox-meta">
-                        Локальное начало координат: 0,0 · Локальный размер: {{activeViewBox.patch.localViewPort.width}} × {{activeViewBox.patch.localViewPort.height}}
+                <section class="menu-group">
+                    <div class="menu-group-header">
+                        <div class="menu-group-eyebrow">Контейнеры</div>
+                        <div class="menu-group-title">ViewBox</div>
+                        <div class="menu-group-description">Создание, выбор и параметры независимых контейнеров patch</div>
                     </div>
 
-                    <div class="row active-viewbox-meta">
-                        Команд в patch: {{activeViewBox.patch.parsedPath.path.length}}
-                    </div>
+                    <div class="panel-stack">
+                        <div class="menu-panel-shell">
+                            <app-expandable panelTitle="ViewBox-контейнеры" [panelInfo]="viewBoxPanelInfo" [opened]="true">
+                                <div class="subsection">
+                                    <div class="subsection-title">Новый контейнер</div>
+                                    <div class="viewbox-form">
+                                        <div class="input-block">
+                                            <label>X</label>
+                                            <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="newViewBox.x">
+                                        </div>
+                                        <div class="input-block">
+                                            <label>Y</label>
+                                            <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="newViewBox.y">
+                                        </div>
+                                        <div class="input-block">
+                                            <label>Ширина</label>
+                                            <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.width">
+                                        </div>
+                                        <div class="input-block">
+                                            <label>Высота</label>
+                                            <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.height">
+                                        </div>
+                                    </div>
 
-                    <div class="row active-viewbox-meta">
-                        Patch ограничен рамками выбранного viewBox и не затрагивает другие контейнеры
-                    </div>
+                                    <div class="row viewbox-actions">
+                                        <button mat-flat-button color="primary" class="mat-flat-button" (click)="createViewBox()" [disabled]="!hasHall || !canCreateViewBox">
+                                            Добавить viewBox
+                                        </button>
 
-                    <div class="row active-viewbox-meta">
-                        Перетаскивание контейнера доступно только за ярлычок названия на сцене
-                    </div>
-                </ng-container>
+                                        <div class="viewbox-hint" *ngIf="!hasHall">
+                                            Сначала загрузите подложку, чтобы размещать viewBox на рабочей области
+                                        </div>
+                                    </div>
+                                </div>
 
-                <ng-template #noActiveViewBox>
-                    <div class="row viewbox-empty">
-                        Выберите viewBox из списка, чтобы открыть его меню и редактировать patch
-                    </div>
-                </ng-template>
-            </app-expandable>
+                                <div class="subsection subsection-compact">
+                                    <div class="subsection-title">Список контейнеров</div>
+                                    <div class="viewbox-hint viewbox-select-hint">
+                                        Активный viewBox выбирается только из списка ниже
+                                    </div>
 
-            <app-expandable panelTitle="Patch выбранного viewBox" [panelInfo]="activeViewBox ? activeViewBox.name : 'нет'" [opened]="true">
-                <ng-container *ngIf="activeViewBox; else noActivePatch">
-                    <div class="row">
-                        <div class="input-block" style="flex-grow:1"  [class.has-error]="invalidSyntax">
-                            <label class="opaque">Путь</label>
-                            <textarea
-                                [ngModel]="rawPath"
-                                (ngModelChange)="reloadPath($event, $event.length > 0)"
-                                class="app-input"
-                                style="height:100px;"
-                                placeholder="Вставьте SVG path для выбранного viewBox"
-                                (focus)="setHistoryDisabled(true)"
-                                (blur)="setHistoryDisabled(false)"
-                                matTooltip="Некорректный путь"
-                                matTooltipPosition="below"
-                                matTooltipClass="app-tooltip"
-                                [matTooltipDisabled]="!invalidSyntax"
-                            ></textarea>
+                                    <div class="viewbox-list" *ngIf="viewBoxes.length > 0; else noViewBoxes">
+                                        <div
+                                            class="viewbox-card"
+                                            *ngFor="let viewBox of viewBoxes; trackBy: trackByViewBoxId"
+                                            [class.active]="viewBox.id === activeViewBoxId"
+                                            (click)="selectViewBox(viewBox.id)"
+                                        >
+                                            <div class="viewbox-card-header">
+                                                <div>
+                                                    <div class="viewbox-card-title">{{viewBox.name}}</div>
+                                                    <div class="viewbox-card-subtitle">{{viewBox.id}}</div>
+                                                </div>
+                                                <div class="viewbox-card-actions">
+                                                    <div class="viewbox-card-badge" *ngIf="viewBox.id === activeViewBoxId">активен</div>
+                                                    <button
+                                                        mat-icon-button
+                                                        type="button"
+                                                        (click)="deleteViewBox(viewBox.id); $event.stopPropagation()"
+                                                        matTooltip="Удалить viewBox"
+                                                        matTooltipPosition="left"
+                                                    >
+                                                        <mat-icon>delete</mat-icon>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="viewbox-card-line">Положение: x {{viewBox.x}}, y {{viewBox.y}}</div>
+                                            <div class="viewbox-card-line">Размер: {{viewBox.width}} × {{viewBox.height}}</div>
+                                            <div class="viewbox-card-line">Локальная область patch: 0,0 · {{viewBox.patch.localViewPort.width}} × {{viewBox.patch.localViewPort.height}}</div>
+                                            <div class="viewbox-card-line">Команд в patch: {{viewBox.patch.parsedPath.path.length}}</div>
+                                        </div>
+                                    </div>
+
+                                    <ng-template #noViewBoxes>
+                                        <div class="row viewbox-empty">
+                                            Контейнеры viewBox ещё не созданы
+                                        </div>
+                                    </ng-template>
+                                </div>
+                            </app-expandable>
+                        </div>
+
+                        <div class="menu-panel-shell">
+                            <app-expandable panelTitle="Выбранный viewBox" [panelInfo]="activeViewBoxPanelInfo" [opened]="true">
+                                <ng-container *ngIf="activeViewBox; else noActiveViewBox">
+                                    <div class="subsection">
+                                        <div class="subsection-title">Текущий контейнер</div>
+                                        <div class="row active-viewbox-note">
+                                            Конструктор patch сейчас работает только внутри {{activeViewBox.name}}
+                                        </div>
+
+                                        <div class="viewbox-form">
+                                            <div class="input-block viewbox-name-block">
+                                                <label>Имя</label>
+                                                <input
+                                                    class="app-input"
+                                                    [ngModel]="activeViewBox.name"
+                                                    (ngModelChange)="updateViewBoxName(activeViewBox.id, $event)"
+                                                    placeholder="Имя viewBox"
+                                                >
+                                            </div>
+                                            <div class="input-block">
+                                                <label>X</label>
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    class="app-input"
+                                                    appFormatter
+                                                    [numberValue]="activeViewBox.x"
+                                                    (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'x', $event)"
+                                                >
+                                            </div>
+                                            <div class="input-block">
+                                                <label>Y</label>
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    class="app-input"
+                                                    appFormatter
+                                                    [numberValue]="activeViewBox.y"
+                                                    (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'y', $event)"
+                                                >
+                                            </div>
+                                            <div class="input-block">
+                                                <label>Ширина</label>
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    min="1"
+                                                    class="app-input"
+                                                    appFormatter
+                                                    formatterType="positive-integer"
+                                                    [numberValue]="activeViewBox.width"
+                                                    (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'width', $event)"
+                                                >
+                                            </div>
+                                            <div class="input-block">
+                                                <label>Высота</label>
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    min="1"
+                                                    class="app-input"
+                                                    appFormatter
+                                                    formatterType="positive-integer"
+                                                    [numberValue]="activeViewBox.height"
+                                                    (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'height', $event)"
+                                                >
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="subsection subsection-compact">
+                                        <div class="subsection-title">Состояние контейнера</div>
+                                        <div class="row active-viewbox-meta">
+                                            Локальное начало координат: 0,0 · Локальный размер: {{activeViewBox.patch.localViewPort.width}} × {{activeViewBox.patch.localViewPort.height}}
+                                        </div>
+
+                                        <div class="row active-viewbox-meta">
+                                            Команд в patch: {{activeViewBox.patch.parsedPath.path.length}}
+                                        </div>
+
+                                        <div class="row active-viewbox-meta">
+                                            Patch ограничен рамками выбранного viewBox и не затрагивает другие контейнеры
+                                        </div>
+
+                                        <div class="row active-viewbox-meta">
+                                            Перетаскивание контейнера доступно только за ярлычок названия на сцене
+                                        </div>
+                                    </div>
+                                </ng-container>
+
+                                <ng-template #noActiveViewBox>
+                                    <div class="row viewbox-empty">
+                                        Выберите viewBox из списка, чтобы открыть его меню и редактировать patch
+                                    </div>
+                                </ng-template>
+                            </app-expandable>
                         </div>
                     </div>
-                    <div class="path-buttons">
+                </section>
 
-                        <app-open (openPath)="openPath($event.path, $event.name)" style="margin-left: 6px;"></app-open>
-                        <app-save [path]="rawPath" [(name)]="pathName"></app-save>
-
-                        <button mat-mini-fab
-                            color="primary"
-                            style="transform: none; margin:0 4px;"
-                            matTooltip="Очистить путь"
-                            matTooltipPosition="below"
-                            matTooltipClass="app-tooltip"
-                            (click)="reloadPath('', false)"
-                        >
-                            <mat-icon>clear</mat-icon>
-                        </button>
-
-                        <button mat-mini-fab
-                            color="accent"
-                            style="transform: none; margin:0 10px 0 auto;"
-                            [matMenuTriggerFor]="appCreate"
-                            [matMenuTriggerData]="{item:null, idx:-1}"
-                            matTooltip="Добавить команду"
-                            matTooltipPosition="below"
-                            matTooltipClass="app-tooltip"
-                        >
-                            <mat-icon>add</mat-icon>
-                        </button>
-                    </div>
-                </ng-container>
-
-                <ng-template #noActivePatch>
-                    <div class="row viewbox-empty">
-                        Выберите viewBox из списка, чтобы редактировать его patch
-                    </div>
-                </ng-template>
-            </app-expandable>
-
-            <app-expandable panelTitle="Камера и точность" [opened]="true">
-                <div class="row">
-                    <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
-                        <label>X</label>
-                        <input type="number" step="1" class="app-input" appFormatter [numberValue]="cfg.viewPortX" (numberValueChange)="updateViewPort($event, cfg.viewPortY, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
-                    </div>
-                    <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
-                        <label>Y</label>
-                        <input type="number" step="1" class="app-input" appFormatter [numberValue]="cfg.viewPortY" (numberValueChange)="updateViewPort(cfg.viewPortX, $event, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
-                    </div>
-                    <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
-                        <label>Ширина</label>
-                        <input type="number" step="any" min="0.0001" class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortWidth" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, $event, null)" [disabled]="cfg.viewPortLocked">
-                    </div>
-                    <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
-                        <label>Высота</label>
-                        <input type="number" step="any" min="0.0001" class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortHeight" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, null, $event)" [disabled]="cfg.viewPortLocked">
+                <section class="menu-group">
+                    <div class="menu-group-header">
+                        <div class="menu-group-eyebrow">Локальная работа</div>
+                        <div class="menu-group-title">Patch</div>
+                        <div class="menu-group-description">Путь, операции и команды активного viewBox</div>
                     </div>
 
-                    <button mat-flat-button (click)="cfg.viewPortLocked = !cfg.viewPortLocked" [matTooltip]="cfg.viewPortLocked ? 'Разблокировать камеру' : 'Заблокировать камеру'" matTooltipPosition="right" class="mat-flat-button">
-                        <mat-icon *ngIf="!cfg.viewPortLocked">lock_open</mat-icon>
-                        <mat-icon *ngIf="cfg.viewPortLocked">lock</mat-icon>
-                    </button>
-                </div>
-                <div class="row">
-                    <mat-checkbox [(ngModel)]="cfg.snapToGrid" style="flex:1">Привязка к шагу</mat-checkbox>
-                    <div class="input-block" style="flex:1" matTooltip="Сколько знаков оставлять при перемещении точки" matTooltipPosition="right" [matTooltipDisabled]="cfg.snapToGrid" [ngClass]="{'disabled': cfg.snapToGrid }">
-                        <label>Точность точек</label>
-                        <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.decimalPrecision" [disabled]="cfg.snapToGrid">
-                    </div>
-                </div>
+                    <div class="panel-stack">
+                        <div class="menu-panel-shell">
+                            <app-expandable panelTitle="Patch выбранного viewBox" [panelInfo]="activeViewBox ? activeViewBox.name : 'нет'" [opened]="true">
+                                <ng-container *ngIf="activeViewBox; else noActivePatch">
+                                    <div class="subsection">
+                                        <div class="subsection-title">SVG path</div>
+                                        <div class="row">
+                                            <div class="input-block section-input-fill" [class.has-error]="invalidSyntax">
+                                                <label class="opaque">Путь</label>
+                                                <textarea
+                                                    [ngModel]="rawPath"
+                                                    (ngModelChange)="reloadPath($event, $event.length > 0)"
+                                                    class="app-input"
+                                                    style="height:100px;"
+                                                    placeholder="Вставьте SVG path для выбранного viewBox"
+                                                    (focus)="setHistoryDisabled(true)"
+                                                    (blur)="setHistoryDisabled(false)"
+                                                    matTooltip="Некорректный путь"
+                                                    matTooltipPosition="below"
+                                                    matTooltipClass="app-tooltip"
+                                                    [matTooltipDisabled]="!invalidSyntax"
+                                                ></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
 
-            </app-expandable>
+                                    <div class="subsection subsection-compact">
+                                        <div class="subsection-title">Действия с путём</div>
+                                        <div class="path-buttons">
+                                            <app-open (openPath)="openPath($event.path, $event.name)" style="margin-left: 0;"></app-open>
+                                            <app-save [path]="rawPath" [(name)]="pathName"></app-save>
 
-            <app-expandable panelTitle="Операции с patch" [opened]="true">
-                <ng-container *ngIf="activeViewBox; else noActiveOperations">
-                    <div class="row path-operations-grid">
-                        <div class="input-block" style="flex:1">
-                            <label>Масштаб X</label>
-                            <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="scaleX">
+                                            <button mat-mini-fab
+                                                color="primary"
+                                                style="transform: none;"
+                                                matTooltip="Очистить путь"
+                                                matTooltipPosition="below"
+                                                matTooltipClass="app-tooltip"
+                                                (click)="reloadPath('', false)"
+                                            >
+                                                <mat-icon>clear</mat-icon>
+                                            </button>
+
+                                            <button mat-mini-fab
+                                                color="accent"
+                                                style="transform: none; margin-left:auto;"
+                                                [matMenuTriggerFor]="appCreate"
+                                                [matMenuTriggerData]="{item:null, idx:-1}"
+                                                matTooltip="Добавить команду"
+                                                matTooltipPosition="below"
+                                                matTooltipClass="app-tooltip"
+                                            >
+                                                <mat-icon>add</mat-icon>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </ng-container>
+
+                                <ng-template #noActivePatch>
+                                    <div class="row viewbox-empty">
+                                        Выберите viewBox из списка, чтобы редактировать его patch
+                                    </div>
+                                </ng-template>
+                            </app-expandable>
                         </div>
-                        <div class="input-block" style="flex:1">
-                            <label>Масштаб Y</label>
-                            <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="scaleY">
+
+                        <div class="menu-panel-shell">
+                            <app-expandable panelTitle="Операции с patch" [opened]="true">
+                                <ng-container *ngIf="activeViewBox; else noActiveOperations">
+                                    <div class="operation-card">
+                                        <div class="operation-card-title">Масштаб</div>
+                                        <div class="row path-operations-grid">
+                                            <div class="input-block" style="flex:1">
+                                                <label>Масштаб X</label>
+                                                <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="scaleX">
+                                            </div>
+                                            <div class="input-block" style="flex:1">
+                                                <label>Масштаб Y</label>
+                                                <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="scaleY">
+                                            </div>
+                                            <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Масштабировать активный viewBox вместе с patch" matTooltipPosition="right" class="mat-flat-button">Масштаб</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="operation-card">
+                                        <div class="operation-card-title">Сдвиг</div>
+                                        <div class="row path-operations-grid">
+                                            <div class="input-block" style="flex:1">
+                                                <label>Сдвиг X</label>
+                                                <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateX">
+                                            </div>
+                                            <div class="input-block" style="flex:1">
+                                                <label>Сдвиг Y</label>
+                                                <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateY">
+                                            </div>
+                                            <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Сместить активный viewBox по подложке" matTooltipPosition="right" class="mat-flat-button">Сдвиг</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="operation-card">
+                                        <div class="operation-card-title">Поворот</div>
+                                        <div class="row path-operations-grid4">
+                                            <div class="input-block" style="flex:1">
+                                                <label>Центр X</label>
+                                                <input type="number" step="any" class="app-input" appFormatter [numberValue]="activeViewBoxCenterX" disabled>
+                                            </div>
+                                            <div class="input-block" style="flex:1">
+                                                <label>Центр Y</label>
+                                                <input type="number" step="any" class="app-input" appFormatter [numberValue]="activeViewBoxCenterY" disabled>
+                                            </div>
+                                            <div class="input-block" style="flex:1">
+                                                <label>Угол (°)</label>
+                                                <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="rotateAngle">
+                                            </div>
+                                            <button mat-flat-button (click)="rotate(rotateAngle)" style="flex:1" matTooltip="Повернуть patch вокруг центра viewBox и подогнать контейнер под результат" matTooltipPosition="right" class="mat-flat-button">Поворот</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="operation-card">
+                                        <div class="operation-card-title">Округление</div>
+                                        <div class="row path-operations-grid">
+                                            <div class="input-block" style="grid-column: span 2;">
+                                                <label>Знаков после запятой</label>
+                                                <input type="number" step="1" min="0" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals">
+                                            </div>
+                                            <button mat-flat-button (click)="roundValues(roundValuesDecimals)" style="flex:1" matTooltip="Округлить все значения до указанного количества знаков" matTooltipPosition="right" class="mat-flat-button">Округлить</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="operation-card operation-card-accent">
+                                        <div class="operation-card-title">Подгонка контейнера</div>
+                                        <div class="row path-fit-row">
+                                            <button
+                                                mat-flat-button
+                                                (click)="fitViewBoxToPatch()"
+                                                style="flex:1"
+                                                matTooltip="Подобрать размер активного viewBox по границам текущего patch"
+                                                matTooltipPosition="right"
+                                                class="mat-flat-button"
+                                            >Подобрать viewBox под patch</button>
+                                        </div>
+                                    </div>
+                                </ng-container>
+
+                                <ng-template #noActiveOperations>
+                                    <div class="row viewbox-empty">
+                                        Выберите viewBox из списка, чтобы использовать операции с patch
+                                    </div>
+                                </ng-template>
+                            </app-expandable>
                         </div>
-                        <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Масштабировать активный viewBox вместе с patch" matTooltipPosition="right" class="mat-flat-button">Масштаб</button>
-                    </div>
 
-                    <div class="row path-operations-grid">
-                        <div class="input-block" style="flex:1">
-                            <label>Сдвиг X</label>
-                            <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateX">
+                        <div class="menu-panel-shell">
+                            <app-expandable panelTitle="Команды пути" [opened]="true">
+                                <ng-container *ngIf="activeViewBox; else noActiveCommands">
+                                    <div class="subsection subsection-compact command-list-section">
+                                        <div class="subsection-title">Текущие команды</div>
+                                        <div *ngFor="let item of parsedPath.path; let j=index"
+                                            (mouseenter)="hoveredItem=item"
+                                            (mouseleave)="hoveredItem=null"
+                                            [ngClass]="{ hovered:item===hoveredItem && !draggedPoint, dragged:(draggedPoint && item===draggedPoint.itemReference) || (focusedItem === item) }"
+                                            class="row command-row"
+                                            (click)="focusedItem=item"
+                                            id="svg_command_row_{{j}}">
+                                            <div class="type-token" [ngClass]="{'type-token-relative':item.relative}" style="user-select: none;-webkit-user-select: none;" (click)="item.setRelative(!item.relative); afterModelChange();">{{item.getType()}}</div>
+                                            <ng-container *ngFor="let value of item.values; let i = index; trackBy:trackByIndex">
+                                                <mat-checkbox *ngIf="item.getType().toLowerCase()==='a' && (i===3 || i===4)" [ngModel]="value" (ngModelChange)="setValue(item,i,$event?1:0);" (focus)="focusedItem=item" class="small-checkbox" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)"></mat-checkbox>
+                                                <input *ngIf="!(item.getType().toLowerCase()==='a' && (i===3 || i===4))" type="number" step="any" appKeyboardNavigable keyboardNavigableIdPrefix="svg_command" appFormatter [numberValue]="value" (numberValueChange)="setValue(item,i,$event);" class="svg-value app-input" id="svg_command_{{j}}_{{item.getType().toLowerCase()==='a' && i>4 ? i-1 : i}}" (focus)="focusedItem=item" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)">
+                                            </ng-container>
+
+                                            <div class="command-row-spacer"></div>
+                                            <button mat-icon-button [matMenuTriggerFor]="appMenu" [matMenuTriggerData]="{item:item, idx:j}" class="more-button">
+                                                <mat-icon svgIcon="more"></mat-icon>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </ng-container>
+
+                                <ng-template #noActiveCommands>
+                                    <div class="row viewbox-empty">
+                                        Выберите viewBox из списка, чтобы видеть и редактировать команды пути
+                                    </div>
+                                </ng-template>
+                            </app-expandable>
                         </div>
-                        <div class="input-block" style="flex:1">
-                            <label>Сдвиг Y</label>
-                            <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateY">
-                        </div>
-                        <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Сместить активный viewBox по подложке" matTooltipPosition="right" class="mat-flat-button">Сдвиг</button>
                     </div>
+                </section>
 
-                    <div class="row path-operations-grid4">
-                        <div class="input-block" style="flex:1">
-                            <label>Центр X</label>
-                            <input type="number" step="any" class="app-input" appFormatter [numberValue]="activeViewBoxCenterX" disabled>
-                        </div>
-                        <div class="input-block" style="flex:1">
-                            <label>Центр Y</label>
-                            <input type="number" step="any" class="app-input" appFormatter [numberValue]="activeViewBoxCenterY" disabled>
-                        </div>
-                        <div class="input-block" style="flex:1">
-                            <label>Угол (°)</label>
-                            <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="rotateAngle">
-                        </div>
-                        <button mat-flat-button (click)="rotate(rotateAngle)" style="flex:1" matTooltip="Повернуть patch вокруг центра viewBox и подогнать контейнер под результат" matTooltipPosition="right" class="mat-flat-button">Поворот</button>
-                    </div>
-
-                    <div class="row path-operations-grid">
-                        <div class="input-block" style="grid-column: span 2;">
-                            <label>Знаков после запятой</label>
-                            <input type="number" step="1" min="0" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals">
-                        </div>
-                        <button mat-flat-button (click)="roundValues(roundValuesDecimals)" style="flex:1" matTooltip="Округлить все значения до указанного количества знаков" matTooltipPosition="right" class="mat-flat-button">Округлить</button>
-                    </div>
-
-                    <div class="row path-fit-row">
-                        <button
-                            mat-flat-button
-                            (click)="fitViewBoxToPatch()"
-                            style="flex:1"
-                            matTooltip="Подобрать размер активного viewBox по границам текущего patch"
-                            matTooltipPosition="right"
-                            class="mat-flat-button"
-                        >Подобрать viewBox под patch</button>
-                    </div>
-                </ng-container>
-
-                <ng-template #noActiveOperations>
-                    <div class="row viewbox-empty">
-                        Выберите viewBox из списка, чтобы использовать операции с patch
-                    </div>
-                </ng-template>
-            </app-expandable>
-
-            <app-expandable panelTitle="Команды пути" [opened]="true">
-                <ng-container *ngIf="activeViewBox; else noActiveCommands">
-                    <div *ngFor="let item of parsedPath.path; let j=index"
-                        (mouseenter)="hoveredItem=item"
-                        (mouseleave)="hoveredItem=null"
-                        [ngClass]="{ hovered:item===hoveredItem && !draggedPoint, dragged:(draggedPoint && item===draggedPoint.itemReference) || (focusedItem === item) }"
-                        class="row"
-                        style="padding-top:1px; padding-bottom:1px;"
-                        (click)="focusedItem=item"
-                        id="svg_command_row_{{j}}">
-                        <div class="type-token" [ngClass]="{'type-token-relative':item.relative}" style="user-select: none;-webkit-user-select: none;" (click)="item.setRelative(!item.relative); afterModelChange();">{{item.getType()}}</div>
-                        <ng-container *ngFor="let value of item.values; let i = index; trackBy:trackByIndex">
-                            <mat-checkbox *ngIf="item.getType().toLowerCase()==='a' && (i===3 || i===4)" [ngModel]="value" (ngModelChange)="setValue(item,i,$event?1:0);" (focus)="focusedItem=item" class="small-checkbox" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)"></mat-checkbox>
-                            <input *ngIf="!(item.getType().toLowerCase()==='a' && (i===3 || i===4))" type="number" step="any" appKeyboardNavigable keyboardNavigableIdPrefix="svg_command" appFormatter [numberValue]="value" (numberValueChange)="setValue(item,i,$event);" class="svg-value app-input" id="svg_command_{{j}}_{{item.getType().toLowerCase()==='a' && i>4 ? i-1 : i}}" (focus)="focusedItem=item" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)">
-                        </ng-container>
-
-                        <div style="flex:1"></div>
-                        <button mat-icon-button [matMenuTriggerFor]="appMenu" [matMenuTriggerData]="{item:item, idx:j}" class="more-button">
-                            <mat-icon svgIcon="more"></mat-icon>
-                        </button>
-                    </div>
-                </ng-container>
-
-                <ng-template #noActiveCommands>
-                    <div class="row viewbox-empty">
-                        Выберите viewBox из списка, чтобы видеть и редактировать команды пути
-                    </div>
-                </ng-template>
-            </app-expandable>
-            <div class="spacer"></div>
+                <div class="spacer"></div>
+            </div>
         </div>
     </div>
 
