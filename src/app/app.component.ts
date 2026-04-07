@@ -684,6 +684,7 @@ export class AppComponent implements AfterViewInit {
         .hall,
         .hall * {
           box-sizing: border-box;
+          color: #000000 !important;
         }
 
         .hall [generated_object] {
