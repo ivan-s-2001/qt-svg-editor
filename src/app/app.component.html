@@ -6,55 +6,6 @@
             <mat-icon>arrow_left</mat-icon>
         </button>
         <div class="left-column" cdk-scrollable>
-            <app-expandable panelTitle="Path" [panelInfo]="rawPath.length.toString()" [opened]="true">
-                <div class="row">
-                    <div class="input-block" style="flex-grow:1"  [class.has-error]="invalidSyntax">
-                        <label class="opaque">Path</label>
-                        <textarea
-                            [ngModel]="rawPath"
-                            (ngModelChange)="reloadPath($event, $event.length > 0)"
-                            class="app-input"
-                            style="height:100px;"
-                            placeholder="Paste any SVG path here"
-                            (focus)="setHistoryDisabled(true)"
-                            (blur)="setHistoryDisabled(false)"
-                            matTooltip="Invalid path"
-                            matTooltipPosition="below"
-                            matTooltipClass="app-tooltip"
-                            [matTooltipDisabled]="!invalidSyntax"
-                        ></textarea>
-                    </div>
-                </div>
-                <div class="path-buttons">
-
-                    <app-open (openPath)="openPath($event.path, $event.name)" style="margin-left: 6px;"></app-open>
-                    <app-save [path]="rawPath" [(name)]="pathName"></app-save>
-
-                    <button mat-mini-fab
-                        color="primary"
-                        style="transform: none; margin:0 4px;"
-                        matTooltip="Clear path"
-                        matTooltipPosition="below"
-                        matTooltipClass="app-tooltip"
-                        (click)="reloadPath('', false)"
-                    >
-                        <mat-icon>clear</mat-icon>
-                    </button>
-
-                    <button mat-mini-fab
-                        color="accent"
-                        style="transform: none; margin:0 10px 0 auto;"
-                        [matMenuTriggerFor]="appCreate"
-                        [matMenuTriggerData]="{item:null, idx:-1}"
-                        matTooltip="Append new command"
-                        matTooltipPosition="below"
-                        matTooltipClass="app-tooltip"
-                    >
-                        <mat-icon>add</mat-icon>
-                    </button>
-                </div>
-            </app-expandable>
-
             <app-expandable panelTitle="Hall HTML" [panelInfo]="hallPanelInfo" [opened]="true">
                 <div class="row">
                     <div class="input-block" style="flex-grow:1">
@@ -117,19 +68,31 @@
                     </div>
                 </div>
 
+                <div class="viewbox-hint viewbox-select-hint">
+                    Активный viewBox выбирается только из списка ниже
+                </div>
+
                 <div class="viewbox-list" *ngIf="viewBoxes.length > 0; else noViewBoxes">
-                    <div class="viewbox-card" *ngFor="let viewBox of viewBoxes; trackBy: trackByViewBoxId">
+                    <div
+                        class="viewbox-card"
+                        *ngFor="let viewBox of viewBoxes; trackBy: trackByViewBoxId"
+                        [class.active]="viewBox.id === activeViewBoxId"
+                        (click)="selectViewBox(viewBox.id)"
+                    >
                         <div class="viewbox-card-header">
                             <div class="viewbox-card-title">{{viewBox.id}}</div>
-                            <button
-                                mat-icon-button
-                                type="button"
-                                (click)="deleteViewBox(viewBox.id)"
-                                matTooltip="Delete viewBox"
-                                matTooltipPosition="left"
-                            >
-                                <mat-icon>delete</mat-icon>
-                            </button>
+                            <div class="viewbox-card-actions">
+                                <div class="viewbox-card-badge" *ngIf="viewBox.id === activeViewBoxId">active</div>
+                                <button
+                                    mat-icon-button
+                                    type="button"
+                                    (click)="deleteViewBox(viewBox.id); $event.stopPropagation()"
+                                    matTooltip="Delete viewBox"
+                                    matTooltipPosition="left"
+                                >
+                                    <mat-icon>delete</mat-icon>
+                                </button>
+                            </div>
                         </div>
                         <div class="viewbox-card-line">Workspace: x {{viewBox.x}}, y {{viewBox.y}}</div>
                         <div class="viewbox-card-line">Size: {{viewBox.width}} × {{viewBox.height}}</div>
@@ -141,6 +104,130 @@
                 <ng-template #noViewBoxes>
                     <div class="row viewbox-empty">
                         No viewBox containers yet
+                    </div>
+                </ng-template>
+            </app-expandable>
+
+            <app-expandable panelTitle="Active viewBox" [panelInfo]="activeViewBoxPanelInfo" [opened]="true">
+                <ng-container *ngIf="activeViewBox; else noActiveViewBox">
+                    <div class="row active-viewbox-note">
+                        Patch-конструктор сейчас работает только внутри {{activeViewBox.id}}
+                    </div>
+
+                    <div class="viewbox-form">
+                        <div class="input-block">
+                            <label>X</label>
+                            <input
+                                class="app-input"
+                                appFormatter
+                                [numberValue]="activeViewBox.x"
+                                (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'x', $event)"
+                            >
+                        </div>
+                        <div class="input-block">
+                            <label>Y</label>
+                            <input
+                                class="app-input"
+                                appFormatter
+                                [numberValue]="activeViewBox.y"
+                                (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'y', $event)"
+                            >
+                        </div>
+                        <div class="input-block">
+                            <label>Width</label>
+                            <input
+                                class="app-input"
+                                appFormatter
+                                formatterType="positive-float"
+                                [numberValue]="activeViewBox.width"
+                                (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'width', $event)"
+                            >
+                        </div>
+                        <div class="input-block">
+                            <label>Height</label>
+                            <input
+                                class="app-input"
+                                appFormatter
+                                formatterType="positive-float"
+                                [numberValue]="activeViewBox.height"
+                                (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'height', $event)"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="row active-viewbox-meta">
+                        Локальное начало координат: 0,0 · Локальный размер: {{activeViewBox.patch.localViewPort.width}} × {{activeViewBox.patch.localViewPort.height}}
+                    </div>
+
+                    <div class="row active-viewbox-meta">
+                        Команд в patch: {{activeViewBox.patch.parsedPath.path.length}}
+                    </div>
+
+                    <div class="row active-viewbox-meta">
+                        Patch ограничен рамками выбранного viewBox и не затрагивает другие контейнеры
+                    </div>
+                </ng-container>
+
+                <ng-template #noActiveViewBox>
+                    <div class="row viewbox-empty">
+                        Select a viewBox from the list to open its menu and patch editor
+                    </div>
+                </ng-template>
+            </app-expandable>
+
+            <app-expandable panelTitle="Active patch" [panelInfo]="activeViewBox ? activeViewBox.id : 'none'" [opened]="true">
+                <ng-container *ngIf="activeViewBox; else noActivePatch">
+                    <div class="row">
+                        <div class="input-block" style="flex-grow:1"  [class.has-error]="invalidSyntax">
+                            <label class="opaque">Path</label>
+                            <textarea
+                                [ngModel]="rawPath"
+                                (ngModelChange)="reloadPath($event, $event.length > 0)"
+                                class="app-input"
+                                style="height:100px;"
+                                placeholder="Paste SVG path for active viewBox"
+                                (focus)="setHistoryDisabled(true)"
+                                (blur)="setHistoryDisabled(false)"
+                                matTooltip="Invalid path"
+                                matTooltipPosition="below"
+                                matTooltipClass="app-tooltip"
+                                [matTooltipDisabled]="!invalidSyntax"
+                            ></textarea>
+                        </div>
+                    </div>
+                    <div class="path-buttons">
+
+                        <app-open (openPath)="openPath($event.path, $event.name)" style="margin-left: 6px;"></app-open>
+                        <app-save [path]="rawPath" [(name)]="pathName"></app-save>
+
+                        <button mat-mini-fab
+                            color="primary"
+                            style="transform: none; margin:0 4px;"
+                            matTooltip="Clear path"
+                            matTooltipPosition="below"
+                            matTooltipClass="app-tooltip"
+                            (click)="reloadPath('', false)"
+                        >
+                            <mat-icon>clear</mat-icon>
+                        </button>
+
+                        <button mat-mini-fab
+                            color="accent"
+                            style="transform: none; margin:0 10px 0 auto;"
+                            [matMenuTriggerFor]="appCreate"
+                            [matMenuTriggerData]="{item:null, idx:-1}"
+                            matTooltip="Append new command"
+                            matTooltipPosition="below"
+                            matTooltipClass="app-tooltip"
+                        >
+                            <mat-icon>add</mat-icon>
+                        </button>
+                    </div>
+                </ng-container>
+
+                <ng-template #noActivePatch>
+                    <div class="row viewbox-empty">
+                        Select a viewBox from the list to edit its patch
                     </div>
                 </ng-template>
             </app-expandable>
@@ -192,84 +279,100 @@
             </app-expandable>
 
             <app-expandable panelTitle="Path Operations" [opened]="true">
-                <div class="row path-operations-grid">
-                    <div class="input-block" style="flex:1">
-                        <label>Scale X</label>
-                        <input appFormatter [(numberValue)]="scaleX" class="app-input" >
+                <ng-container *ngIf="activeViewBox; else noActiveOperations">
+                    <div class="row path-operations-grid">
+                        <div class="input-block" style="flex:1">
+                            <label>Scale X</label>
+                            <input appFormatter [(numberValue)]="scaleX" class="app-input" >
+                        </div>
+                        <div class="input-block" style="flex:1">
+                            <label>Scale Y</label>
+                            <input appFormatter [(numberValue)]="scaleY" class="app-input">
+                        </div>
+                        <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Scale the full path with provided values" matTooltipPosition="right" class="mat-flat-button">Scale</button>
                     </div>
-                    <div class="input-block" style="flex:1">
-                        <label>Scale Y</label>
-                        <input appFormatter [(numberValue)]="scaleY" class="app-input">
-                    </div>
-                    <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Scale the full path with provided values" matTooltipPosition="right" class="mat-flat-button">Scale</button>
-                </div>
 
-                <div class="row path-operations-grid">
-                    <div class="input-block" style="flex:1">
-                        <label>Translate X</label>
-                        <input appFormatter [(numberValue)]="translateX" class="app-input">
+                    <div class="row path-operations-grid">
+                        <div class="input-block" style="flex:1">
+                            <label>Translate X</label>
+                            <input appFormatter [(numberValue)]="translateX" class="app-input">
+                        </div>
+                        <div class="input-block" style="flex:1">
+                            <label>Translate Y</label>
+                            <input appFormatter [(numberValue)]="translateY" class="app-input">
+                        </div>
+                        <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Translate the full path with provided values" matTooltipPosition="right" class="mat-flat-button">Translate</button>
                     </div>
-                    <div class="input-block" style="flex:1">
-                        <label>Translate Y</label>
-                        <input appFormatter [(numberValue)]="translateY" class="app-input">
-                    </div>
-                    <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Translate the full path with provided values" matTooltipPosition="right" class="mat-flat-button">Translate</button>
-                </div>
 
-                <div class="row path-operations-grid4">
-                    <div class="input-block" style="flex:1">
-                        <label>Origin X</label>
-                        <input appFormatter [(numberValue)]="rotateX" class="app-input">
+                    <div class="row path-operations-grid4">
+                        <div class="input-block" style="flex:1">
+                            <label>Origin X</label>
+                            <input appFormatter [(numberValue)]="rotateX" class="app-input">
+                        </div>
+                        <div class="input-block" style="flex:1">
+                            <label>Origin Y</label>
+                            <input appFormatter [(numberValue)]="rotateY" class="app-input">
+                        </div>
+                        <div class="input-block" style="flex:1">
+                            <label>Angle</label>
+                            <input appFormatter suffix="°" [(numberValue)]="rotateAngle" class="app-input">
+                        </div>
+                        <button mat-flat-button (click)="rotate(rotateX, rotateY, rotateAngle)" style="flex:1" matTooltip="Rotate the full path by the given angle in degrees about the given point" matTooltipPosition="right" class="mat-flat-button">Rotate</button>
                     </div>
-                    <div class="input-block" style="flex:1">
-                        <label>Origin Y</label>
-                        <input appFormatter [(numberValue)]="rotateY" class="app-input">
-                    </div>
-                    <div class="input-block" style="flex:1">
-                        <label>Angle</label>
-                        <input appFormatter suffix="°" [(numberValue)]="rotateAngle" class="app-input">
-                    </div>
-                    <button mat-flat-button (click)="rotate(rotateX, rotateY, rotateAngle)" style="flex:1" matTooltip="Rotate the full path by the given angle in degrees about the given point" matTooltipPosition="right" class="mat-flat-button">Rotate</button>
-                </div>
 
-                <div class="row path-operations-grid">
-                    <div class="input-block" style="grid-column: span 2;">
-                        <label>Number of decimals</label>
-                        <input appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals" class="app-input">
+                    <div class="row path-operations-grid">
+                        <div class="input-block" style="grid-column: span 2;">
+                            <label>Number of decimals</label>
+                            <input appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals" class="app-input">
+                        </div>
+                        <button mat-flat-button (click)="roundValues(roundValuesDecimals)" style="flex:1" matTooltip="Round all values, input the number of decimals to keep" matTooltipPosition="right" class="mat-flat-button">Round</button>
                     </div>
-                    <button mat-flat-button (click)="roundValues(roundValuesDecimals)" style="flex:1" matTooltip="Round all values, input the number of decimals to keep" matTooltipPosition="right" class="mat-flat-button">Round</button>
-                </div>
 
-                <div class="row">
-                    <button mat-flat-button (click)="setRelative(true)" matTooltip="Convert all commands to relative" style="flex:1" class="mat-flat-button">Convert to relative</button>
-                    <button mat-flat-button (click)="setRelative(false)" matTooltip="Convert all commands to absolute" style="flex:1" class="mat-flat-button">Convert to absolute</button>
-                </div>
-                <div class="row">
-                    <button mat-flat-button (click)="reverse()" matTooltip="Reverse path commands" style="flex:1" class="mat-flat-button">Reverse</button>
-                    <button mat-flat-button (click)="optimize()" matTooltip="Optimize the path by removing useless components, changing types and reordering" style="flex:1" class="mat-flat-button">Optimize</button>
-                </div>
+                    <div class="row">
+                        <button mat-flat-button (click)="setRelative(true)" matTooltip="Convert all commands to relative" style="flex:1" class="mat-flat-button">Convert to relative</button>
+                        <button mat-flat-button (click)="setRelative(false)" matTooltip="Convert all commands to absolute" style="flex:1" class="mat-flat-button">Convert to absolute</button>
+                    </div>
+                    <div class="row">
+                        <button mat-flat-button (click)="reverse()" matTooltip="Reverse path commands" style="flex:1" class="mat-flat-button">Reverse</button>
+                        <button mat-flat-button (click)="optimize()" matTooltip="Optimize the path by removing useless components, changing types and reordering" style="flex:1" class="mat-flat-button">Optimize</button>
+                    </div>
+                </ng-container>
+
+                <ng-template #noActiveOperations>
+                    <div class="row viewbox-empty">
+                        Select a viewBox from the list to use patch operations
+                    </div>
+                </ng-template>
             </app-expandable>
 
             <app-expandable panelTitle="Commands" [opened]="true">
-                <div *ngFor="let item of parsedPath.path; let j=index"
-                    (mouseenter)="hoveredItem=item"
-                    (mouseleave)="hoveredItem=null"
-                    [ngClass]="{ hovered:item===hoveredItem && !draggedPoint, dragged:(draggedPoint && item===draggedPoint.itemReference) || (focusedItem === item) }"
-                    class="row"
-                    style="padding-top:1px; padding-bottom:1px;"
-                    (click)="focusedItem=item"
-                    id="svg_command_row_{{j}}">
-                    <div class="type-token" [ngClass]="{'type-token-relative':item.relative}" style="user-select: none;-webkit-user-select: none;" (click)="item.setRelative(!item.relative); afterModelChange();">{{item.getType()}}</div>
-                    <ng-container *ngFor="let value of item.values; let i = index; trackBy:trackByIndex">
-                        <mat-checkbox *ngIf="item.getType().toLowerCase()==='a' && (i===3 || i===4)" [ngModel]="value" (ngModelChange)="setValue(item,i,$event?1:0);" (focus)="focusedItem=item" class="small-checkbox" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)"></mat-checkbox>
-                        <input *ngIf="!(item.getType().toLowerCase()==='a' && (i===3 || i===4))" type="text" appKeyboardNavigable keyboardNavigableIdPrefix="svg_command" appFormatter [numberValue]="value" (numberValueChange)="setValue(item,i,$event);" class="svg-value app-input" id="svg_command_{{j}}_{{item.getType().toLowerCase()==='a' && i>4 ? i-1 : i}}" (focus)="focusedItem=item" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)">
-                    </ng-container>
+                <ng-container *ngIf="activeViewBox; else noActiveCommands">
+                    <div *ngFor="let item of parsedPath.path; let j=index"
+                        (mouseenter)="hoveredItem=item"
+                        (mouseleave)="hoveredItem=null"
+                        [ngClass]="{ hovered:item===hoveredItem && !draggedPoint, dragged:(draggedPoint && item===draggedPoint.itemReference) || (focusedItem === item) }"
+                        class="row"
+                        style="padding-top:1px; padding-bottom:1px;"
+                        (click)="focusedItem=item"
+                        id="svg_command_row_{{j}}">
+                        <div class="type-token" [ngClass]="{'type-token-relative':item.relative}" style="user-select: none;-webkit-user-select: none;" (click)="item.setRelative(!item.relative); afterModelChange();">{{item.getType()}}</div>
+                        <ng-container *ngFor="let value of item.values; let i = index; trackBy:trackByIndex">
+                            <mat-checkbox *ngIf="item.getType().toLowerCase()==='a' && (i===3 || i===4)" [ngModel]="value" (ngModelChange)="setValue(item,i,$event?1:0);" (focus)="focusedItem=item" class="small-checkbox" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)"></mat-checkbox>
+                            <input *ngIf="!(item.getType().toLowerCase()==='a' && (i===3 || i===4))" type="text" appKeyboardNavigable keyboardNavigableIdPrefix="svg_command" appFormatter [numberValue]="value" (numberValueChange)="setValue(item,i,$event);" class="svg-value app-input" id="svg_command_{{j}}_{{item.getType().toLowerCase()==='a' && i>4 ? i-1 : i}}" (focus)="focusedItem=item" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)">
+                        </ng-container>
 
-                    <div style="flex:1"></div>
-                    <button mat-icon-button [matMenuTriggerFor]="appMenu" [matMenuTriggerData]="{item:item, idx:j}" class="more-button">
-                        <mat-icon svgIcon="more"></mat-icon>
-                    </button>
-                </div>
+                        <div style="flex:1"></div>
+                        <button mat-icon-button [matMenuTriggerFor]="appMenu" [matMenuTriggerData]="{item:item, idx:j}" class="more-button">
+                            <mat-icon svgIcon="more"></mat-icon>
+                        </button>
+                    </div>
+                </ng-container>
+
+                <ng-template #noActiveCommands>
+                    <div class="row viewbox-empty">
+                        Select a viewBox from the list to see and edit its commands
+                    </div>
+                </ng-template>
             </app-expandable>
             <div class="spacer"></div>
         </div>
@@ -279,10 +382,13 @@
         <button mat-raised-button class="left-column-open" *ngIf="!isLeftPanelOpened" (click)="toggleLeftPanel()">
             <mat-icon>arrow_right</mat-icon>
         </button>
-        <button mat-mini-fab *ngIf="((!draggedPoint && focusedItem) || parsedPath.path.length===0) && !(cfg.preview || isEditingImages)"
+        <button mat-mini-fab *ngIf="activeViewBox && ((!draggedPoint && focusedItem) || parsedPath.path.length===0) && !(cfg.preview || isEditingImages)"
             color="accent"
             class="add-button"
-            [ngStyle]="{ 'left': 6+((focusedItem ? focusedItem.targetLocation().x : 0)-cfg.viewPortX)/strokeWidth+'px', 'top': 6+((focusedItem ? focusedItem.targetLocation().y : 0)-cfg.viewPortY)/strokeWidth+'px' }"
+            [ngStyle]="{
+                'left': 6 + (((activePatchOffsetX + (focusedItem ? focusedItem.targetLocation().x : 0)) - cfg.viewPortX) / strokeWidth) + 'px',
+                'top': 6 + (((activePatchOffsetY + (focusedItem ? focusedItem.targetLocation().y : 0)) - cfg.viewPortY) / strokeWidth) + 'px'
+            }"
             [ngClass]="{'opened':isContextualMenuOpened}"
             [matMenuTriggerFor]="focusedItem ? appMenu : appCreate"
             [matMenuTriggerData]="{item:focusedItem, idx:-1}"
@@ -324,8 +430,8 @@
                 <mat-icon>image</mat-icon>
             </button>
 
-            <app-export [path]="rawPath" [name]="pathName || '' " style="margin-right: 8px"></app-export>
-            <app-share [path]="rawPath"></app-share>
+            <app-export [path]="activeViewBox ? rawPath : ''" [name]="pathName || '' " style="margin-right: 8px"></app-export>
+            <app-share [path]="activeViewBox ? rawPath : ''"></app-share>
         </div>
         <div class="scene-bottom-actions">
             <button mat-mini-fab color="primary" (click)="cfg.snapToGrid = !cfg.snapToGrid" matTooltip="Snap to Grid" matTooltipPosition="left"><mat-icon>{{ cfg.snapToGrid ? 'grid_on' : 'grid_off' }}</mat-icon></button>
@@ -352,19 +458,6 @@
                         class="hall-workspace-content"
                         [innerHTML]="hallHtml"
                     ></div>
-
-                    <div class="viewbox-overlay-layer" *ngIf="viewBoxes.length > 0">
-                        <div
-                            *ngFor="let viewBox of viewBoxes; trackBy: trackByViewBoxId"
-                            class="viewbox-frame"
-                            [style.left.px]="viewBox.x"
-                            [style.top.px]="viewBox.y"
-                            [style.width.px]="viewBox.width"
-                            [style.height.px]="viewBox.height"
-                        >
-                            <div class="viewbox-frame-label">{{viewBox.id}}</div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -406,7 +499,50 @@
             (cursorPosition)="setCursorPosition($event)"
             (hoverPosition)="setHoverPosition($event)"
             [hasHallBackground]="hasHall"
+            [pathLocalMode]="!!activeViewBox"
+            [patchOffsetX]="activePatchOffsetX"
+            [patchOffsetY]="activePatchOffsetY"
+            [patchWidth]="activePatchWidth"
+            [patchHeight]="activePatchHeight"
         ></svg>
+
+        <div
+            *ngIf="hallHtml && hallWidth > 0 && hallHeight > 0 && strokeWidth"
+            class="viewbox-overlay-viewport"
+        >
+            <div
+                class="hall-workspace-pan"
+                [style.transform]="'translate(' + hallLayerOffsetX + 'px, ' + hallLayerOffsetY + 'px)'"
+            >
+                <div
+                    class="hall-workspace-layer viewbox-overlay-layer"
+                    [style.width.px]="hallWidth"
+                    [style.height.px]="hallHeight"
+                    [style.transform]="'scale(' + hallLayerScale + ')'"
+                >
+                    <div
+                        *ngFor="let viewBox of viewBoxes; trackBy: trackByViewBoxId"
+                        class="viewbox-frame"
+                        [class.active]="viewBox.id === activeViewBoxId"
+                        [style.left.px]="viewBox.x"
+                        [style.top.px]="viewBox.y"
+                        [style.width.px]="viewBox.width"
+                        [style.height.px]="viewBox.height"
+                    >
+                        <div class="viewbox-frame-label">{{viewBox.id}}</div>
+
+                        <svg
+                            *ngIf="viewBox.patch.rawPath && viewBox.id !== activeViewBoxId"
+                            class="viewbox-frame-preview"
+                            [attr.viewBox]="'0 0 ' + viewBox.width + ' ' + viewBox.height"
+                            preserveAspectRatio="none"
+                        >
+                            <path [attr.d]="viewBox.patch.rawPath"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

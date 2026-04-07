@@ -34,6 +34,11 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() targetPoints: SvgPoint[] = [];
   @Input() controlPoints: SvgControlPoint[] = [];
   @Input() hasHallBackground = false;
+  @Input() pathLocalMode = false;
+  @Input() patchOffsetX = 0;
+  @Input() patchOffsetY = 0;
+  @Input() patchWidth = 0;
+  @Input() patchHeight = 0;
 
   @HostBinding('class.has-hall-background')
   get hasHallBackgroundClass(): boolean {
@@ -94,6 +99,22 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   min = Math.min;
   abs = Math.abs;
   trackByIndex = (idx: number, _: unknown) => idx;
+
+  get hasPathBounds(): boolean {
+    return this.pathLocalMode && this.patchWidth > 0 && this.patchHeight > 0;
+  }
+
+  get pathTransform(): string | null {
+    return this.hasPathBounds ? `translate(${this.patchOffsetX} ${this.patchOffsetY})` : null;
+  }
+
+  get pathClipId(): string {
+    return 'active-viewbox-path-clip';
+  }
+
+  get pathClipUrl(): string | null {
+    return this.hasPathBounds ? `url(#${this.pathClipId})` : null;
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['viewPortX'] || changes['viewPortY'] || changes['viewPortWidth'] || changes['viewPortHeight']) {
@@ -180,6 +201,32 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     return {x, y};
   }
 
+  toPathLocation(point: {x: number, y: number}): {x: number, y: number} {
+    return {
+      x: point.x - this.patchOffsetX,
+      y: point.y - this.patchOffsetY
+    };
+  }
+
+  clampToPathBounds(point: {x: number, y: number}): {x: number, y: number} {
+    if (!this.hasPathBounds) {
+      return point;
+    }
+
+    return {
+      x: Math.min(this.patchWidth, Math.max(0, point.x)),
+      y: Math.min(this.patchHeight, Math.max(0, point.y))
+    };
+  }
+
+  isInsidePathBounds(point: {x: number, y: number}): boolean {
+    if (!this.hasPathBounds) {
+      return true;
+    }
+
+    return point.x >= 0 && point.y >= 0 && point.x <= this.patchWidth && point.y <= this.patchHeight;
+  }
+
   pinchToZoom(previousEvent: MouseEvent | TouchEvent, event: MouseEvent | TouchEvent) {
     if (window.TouchEvent
       && previousEvent instanceof TouchEvent
@@ -264,8 +311,9 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   drag(event: MouseEvent | TouchEvent) {
-    const pt = this.eventToLocation(event);
-    this.hoverPosition.emit(pt);
+    const canvasPt = this.eventToLocation(event);
+    const hoverPt = this.pathLocalMode ? this.toPathLocation(canvasPt) : canvasPt;
+    this.hoverPosition.emit(this.isInsidePathBounds(hoverPt) ? hoverPt : undefined);
 
     if (this.draggedPoint || this.draggedEvt || this.draggedImage) {
       if (!this.dragWithoutClick && event instanceof MouseEvent && event.buttons === 0) {
@@ -276,15 +324,18 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
       event.stopPropagation();
       if (this.draggedImage && this.draggedEvt) {
         const oriPt = this.eventToLocation(this.draggedEvt);
-        if (this.draggedImageType & 0b0001) this.draggedImage.x1 += (pt.x - oriPt.x);
-        if (this.draggedImageType & 0b0010) this.draggedImage.y1 += (pt.y - oriPt.y);
-        if (this.draggedImageType & 0b0100) this.draggedImage.x2 += (pt.x - oriPt.x);
-        if (this.draggedImageType & 0b1000) this.draggedImage.y2 += (pt.y - oriPt.y);
+        if (this.draggedImageType & 0b0001) this.draggedImage.x1 += (canvasPt.x - oriPt.x);
+        if (this.draggedImageType & 0b0010) this.draggedImage.y1 += (canvasPt.y - oriPt.y);
+        if (this.draggedImageType & 0b0100) this.draggedImage.x2 += (canvasPt.x - oriPt.x);
+        if (this.draggedImageType & 0b1000) this.draggedImage.y2 += (canvasPt.y - oriPt.y);
         this.draggedEvt = event;
       } else if (this.draggedPoint && this.parsedPath) {
+        let pt = this.pathLocalMode ? this.clampToPathBounds(this.toPathLocation(canvasPt)) : canvasPt;
         const decimals = event.ctrlKey ? (this.decimals ? 0 : 3) : this.decimals;
-        pt.x = parseFloat(pt.x.toFixed(decimals));
-        pt.y = parseFloat(pt.y.toFixed(decimals));
+        pt = {
+          x: parseFloat(pt.x.toFixed(decimals)),
+          y: parseFloat(pt.y.toFixed(decimals))
+        };
         this.parsedPath.setLocation(this.draggedPoint, pt as Point);
         if (this.draggedIsNew) {
           const previousIdx = this.parsedPath.path.indexOf(this.draggedPoint.itemReference) - 1;
@@ -307,7 +358,7 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
           this.viewPort.emit({x, y, w, h});
         } else {
           const oriPt = this.eventToLocation(this.draggedEvt);
-          this.viewPort.emit({ x: this.viewPortX + (oriPt.x - pt.x), y: this.viewPortY + (oriPt.y - pt.y), w: this.viewPortWidth, h: this.viewPortHeight });
+          this.viewPort.emit({ x: this.viewPortX + (oriPt.x - canvasPt.x), y: this.viewPortY + (oriPt.y - canvasPt.y), w: this.viewPortWidth, h: this.viewPortHeight });
         }
         this.draggedEvt = event;
       }

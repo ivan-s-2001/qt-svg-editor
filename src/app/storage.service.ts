@@ -91,6 +91,19 @@ export class StorageService {
     localStorage.removeItem(STORAGE.VIEW_BOXES);
   }
 
+  getActiveViewBoxId(): string | null {
+    const value = localStorage.getItem(STORAGE.ACTIVE_VIEW_BOX_ID);
+    return value && value.trim() ? value : null;
+  }
+
+  setActiveViewBoxId(id: string): void {
+    localStorage.setItem(STORAGE.ACTIVE_VIEW_BOX_ID, id);
+  }
+
+  removeActiveViewBoxId(): void {
+    localStorage.removeItem(STORAGE.ACTIVE_VIEW_BOX_ID);
+  }
+
   removePath(name: string) {
     this.storedPaths = this.storedPaths.filter(it => it.name !== name);
     this.save();

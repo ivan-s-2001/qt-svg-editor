@@ -5,11 +5,11 @@
 
     <ng-container *ngIf="!preview && showTicks">
         <ng-container *ngFor="let y of yGrid; trackBy:trackByIndex">
-            <svg:text class="tick" *ngIf="y % tickInterval ===  0" [attr.x]="-4*strokeWidth" [attr.y]="y - 4*strokeWidth" [ngStyle]="{'font-size': strokeWidth*14+'px'}">{{ y }}</text>
+            <svg:text class="tick" *ngIf="y % tickInterval ===  0" [attr.x]="-4*strokeWidth" [attr.y]="y - 4*strokeWidth" [ngStyle]="{'font-size': strokeWidth*14+'px'}">{{ y }}</svg:text>
         </ng-container>
 
         <ng-container *ngFor="let x of xGrid; trackBy:trackByIndex">
-            <svg:text class="tick" *ngIf="x !== 0 && x % tickInterval === 0" [attr.x]="x - 4*strokeWidth" [attr.y]="-4*strokeWidth" [ngStyle]="{'font-size': strokeWidth*14+'px'}">{{ x }}</text>
+            <svg:text class="tick" *ngIf="x !== 0 && x % tickInterval === 0" [attr.x]="x - 4*strokeWidth" [attr.y]="-4*strokeWidth" [ngStyle]="{'font-size': strokeWidth*14+'px'}">{{ x }}</svg:text>
         </ng-container>
     </ng-container>
 
@@ -21,24 +21,34 @@
         </ng-container>
     </ng-container>
 
-    <svg:path [class.filled]="filled" [attr.d]="parsedPath?.asString()" [attr.stroke-width]="strokeWidth" />
+    <svg:defs *ngIf="hasPathBounds">
+        <svg:clipPath [attr.id]="pathClipId" clipPathUnits="userSpaceOnUse">
+            <svg:rect [attr.x]="patchOffsetX" [attr.y]="patchOffsetY" [attr.width]="patchWidth" [attr.height]="patchHeight"></svg:rect>
+        </svg:clipPath>
+    </svg:defs>
 
-    <ng-container *ngIf="!editImages">
-        <ng-container *ngFor="let loc of controlPoints; trackBy:trackByIndex">
-            <svg:line *ngFor="let rel of loc.relations; trackBy:trackByIndex" class="control" [attr.x1]="loc.x" [attr.y1]="loc.y" [attr.x2]="rel.x" [attr.y2]="rel.y" [attr.stroke-width]="strokeWidth" />
-        </ng-container>
+    <svg:g [attr.clip-path]="pathClipUrl || null">
+        <svg:g [attr.transform]="pathTransform || null">
+            <svg:path [class.filled]="filled" [attr.d]="parsedPath?.asString()" [attr.stroke-width]="strokeWidth" />
 
-        <svg:path *ngIf="hoveredItem && !draggedPoint && !preview" [attr.d]="hoveredItem.asStandaloneString()" [attr.stroke-width]="strokeWidth" class="hovered" />
-        <svg:path *ngIf="focusedItem  && !preview" [attr.d]="focusedItem.asStandaloneString()" [attr.stroke-width]="strokeWidth" class="dragged" />
+            <ng-container *ngIf="!editImages">
+                <ng-container *ngFor="let loc of controlPoints; trackBy:trackByIndex">
+                    <svg:line *ngFor="let rel of loc.relations; trackBy:trackByIndex" class="control" [attr.x1]="loc.x" [attr.y1]="loc.y" [attr.x2]="rel.x" [attr.y2]="rel.y" [attr.stroke-width]="strokeWidth" />
+                </ng-container>
 
-        <ng-container *ngFor="let loc of targetPoints; trackBy:trackByIndex">
-            <svg:circle *ngIf="loc.movable" class="target" [attr.cx]="loc.x" [attr.cy]="loc.y" [attr.r]="3*strokeWidth" (mousedown)="startDrag(loc);$event.stopPropagation()" (touchstart)="startDrag(loc);$event.preventDefault();$event.stopPropagation()" [attr.stroke-width]="12*strokeWidth" (mouseenter)="hoveredItem=loc.itemReference; $event.stopPropagation()" (mouseleave)="hoveredItem=null" [ngClass]="{ hovered:loc.itemReference===hoveredItem && !draggedPoint, dragged:loc.itemReference===focusedItem }" />
-        </ng-container>
+                <svg:path *ngIf="hoveredItem && !draggedPoint && !preview" [attr.d]="hoveredItem.asStandaloneString()" [attr.stroke-width]="strokeWidth" class="hovered" />
+                <svg:path *ngIf="focusedItem  && !preview" [attr.d]="focusedItem.asStandaloneString()" [attr.stroke-width]="strokeWidth" class="dragged" />
 
-        <ng-container *ngFor="let loc of controlPoints; trackBy:trackByIndex">
-            <svg:circle *ngIf="loc.movable" class="control" [attr.cx]="loc.x" [attr.cy]="loc.y" [attr.r]="3*strokeWidth" (mousedown)="startDrag(loc);$event.stopPropagation()" (touchstart)="startDrag(loc);$event.preventDefault();$event.stopPropagation()" [attr.stroke-width]="12*strokeWidth" (mouseenter)="hoveredItem=loc.itemReference; $event.stopPropagation()" (mouseleave)="hoveredItem=null" [ngClass]="{ hovered:loc.itemReference===hoveredItem && !draggedPoint, dragged:loc.itemReference===focusedItem }" />
-        </ng-container>
-    </ng-container>
+                <ng-container *ngFor="let loc of targetPoints; trackBy:trackByIndex">
+                    <svg:circle *ngIf="loc.movable" class="target" [attr.cx]="loc.x" [attr.cy]="loc.y" [attr.r]="3*strokeWidth" (mousedown)="startDrag(loc);$event.stopPropagation()" (touchstart)="startDrag(loc);$event.preventDefault();$event.stopPropagation()" [attr.stroke-width]="12*strokeWidth" (mouseenter)="hoveredItem=loc.itemReference; $event.stopPropagation()" (mouseleave)="hoveredItem=null" [ngClass]="{ hovered:loc.itemReference===hoveredItem && !draggedPoint, dragged:loc.itemReference===focusedItem }" />
+                </ng-container>
+
+                <ng-container *ngFor="let loc of controlPoints; trackBy:trackByIndex">
+                    <svg:circle *ngIf="loc.movable" class="control" [attr.cx]="loc.x" [attr.cy]="loc.y" [attr.r]="3*strokeWidth" (mousedown)="startDrag(loc);$event.stopPropagation()" (touchstart)="startDrag(loc);$event.preventDefault();$event.stopPropagation()" [attr.stroke-width]="12*strokeWidth" (mouseenter)="hoveredItem=loc.itemReference; $event.stopPropagation()" (mouseleave)="hoveredItem=null" [ngClass]="{ hovered:loc.itemReference===hoveredItem && !draggedPoint, dragged:loc.itemReference===focusedItem }" />
+                </ng-container>
+            </ng-container>
+        </svg:g>
+    </svg:g>
 
     <ng-container *ngIf="editImages && !preview">
         <svg:g *ngFor="let im of images" [class.focused-image]="im===focusedImage">

@@ -100,7 +100,7 @@ export class AppComponent implements AfterViewInit {
   targetPoints: SvgPoint[] = [];
   controlPoints: SvgControlPoint[] = [];
 
-  _rawPath = this.storage.getPath()?.path || kDefaultPath;
+  _rawPath = '';
   pathName = '';
   invalidSyntax = false;
 
@@ -141,6 +141,7 @@ export class AppComponent implements AfterViewInit {
   hallError = '';
 
   viewBoxes: ViewBoxEntity[] = [];
+  activeViewBoxId: string | null = null;
   newViewBox: ViewBoxDraft = { x: 40, y: 40, width: 320, height: 240 };
 
   isLeftPanelOpened = true;
@@ -169,8 +170,7 @@ export class AppComponent implements AfterViewInit {
     }
 
     this.viewBoxes = this.storage.getViewBoxes().map((viewBox) => this.inflateViewBox(viewBox));
-
-    this.reloadPath(this.rawPath, true);
+    this.activateViewBox(this.resolveInitialActiveViewBoxId());
   }
 
   @HostListener('document:keydown', ['$event']) onKeyDown($event: KeyboardEvent) {
@@ -182,7 +182,7 @@ export class AppComponent implements AfterViewInit {
       } else if (($event.metaKey || $event.ctrlKey) && $event.key.toLowerCase() === KEYBOARD.KEYS.UNDO) {
         this.undo();
         $event.preventDefault();
-      } else if (!$event.metaKey && !$event.ctrlKey && KEYBOARD.PATTERNS.SVG_COMMAND.test($event.key)) {
+      } else if (this.activeViewBox && !$event.metaKey && !$event.ctrlKey && KEYBOARD.PATTERNS.SVG_COMMAND.test($event.key)) {
         const isLower = $event.key === $event.key.toLowerCase();
         const key = $event.key.toUpperCase() as SvgCommandType;
         if (isLower) {
@@ -203,7 +203,7 @@ export class AppComponent implements AfterViewInit {
           this.canvas.stopDrag();
         }
         $event.preventDefault();
-      } else if (!$event.metaKey && !$event.ctrlKey && ($event.key === KEYBOARD.KEYS.DELETE || $event.key === KEYBOARD.KEYS.BACKSPACE)) {
+      } else if (this.activeViewBox && !$event.metaKey && !$event.ctrlKey && ($event.key === KEYBOARD.KEYS.DELETE || $event.key === KEYBOARD.KEYS.BACKSPACE)) {
         if (this.focusedItem && this.canDelete(this.focusedItem)) {
           this.delete(this.focusedItem);
           $event.preventDefault();
@@ -222,6 +222,10 @@ export class AppComponent implements AfterViewInit {
 
   get hasHall(): boolean {
     return this.hallWidth > 0 && this.hallHeight > 0 && !!this.hallHtml;
+  }
+
+  get activeViewBox(): ViewBoxEntity | null {
+    return this.viewBoxes.find((viewBox) => viewBox.id === this.activeViewBoxId) || null;
   }
 
   get hallPanelInfo(): string {
@@ -244,8 +248,28 @@ export class AppComponent implements AfterViewInit {
     return this.viewBoxes.length.toString();
   }
 
+  get activeViewBoxPanelInfo(): string {
+    return this.activeViewBox ? this.activeViewBox.id : 'not selected';
+  }
+
   get canCreateViewBox(): boolean {
     return this.newViewBox.width > 0 && this.newViewBox.height > 0;
+  }
+
+  get activePatchOffsetX(): number {
+    return this.activeViewBox?.x || 0;
+  }
+
+  get activePatchOffsetY(): number {
+    return this.activeViewBox?.y || 0;
+  }
+
+  get activePatchWidth(): number {
+    return this.activeViewBox?.width || 0;
+  }
+
+  get activePatchHeight(): number {
+    return this.activeViewBox?.height || 0;
   }
 
   ngAfterViewInit() {
@@ -260,6 +284,10 @@ export class AppComponent implements AfterViewInit {
 
   set rawPath(value: string) {
     this._rawPath = value;
+    const patch = this.getActivePatchContext();
+    if (patch) {
+      patch.rawPath = value;
+    }
     this.pushHistory();
   }
 
@@ -268,6 +296,7 @@ export class AppComponent implements AfterViewInit {
     this.setHistoryDisabled(dragging);
     if (!dragging) {
       this.draggedIsNew = false;
+      this.persistViewBoxes();
     }
   }
 
@@ -283,6 +312,7 @@ export class AppComponent implements AfterViewInit {
     this.historyDisabled = value;
     if (!value) {
       this.pushHistory();
+      this.syncActivePatchFromEditor();
     }
   }
 
@@ -291,11 +321,18 @@ export class AppComponent implements AfterViewInit {
       this.historyCursor++;
       this.history.splice(this.historyCursor, this.history.length - this.historyCursor, this.rawPath);
       this.storage.addPath(null, this.rawPath);
+
+      const patch = this.getActivePatchContext();
+      if (patch) {
+        patch.history = this.history;
+        patch.historyCursor = this.historyCursor;
+        this.persistViewBoxes();
+      }
     }
   }
 
   canUndo(): boolean {
-    return this.historyCursor > 0 && !this.isEditingImages;
+    return this.historyCursor > 0 && !this.isEditingImages && !!this.activeViewBox;
   }
 
   undo() {
@@ -304,11 +341,12 @@ export class AppComponent implements AfterViewInit {
       this.historyCursor--;
       this.reloadPath(this.history[this.historyCursor]);
       this.historyDisabled = false;
+      this.syncActivePatchFromEditor();
     }
   }
 
   canRedo(): boolean {
-    return this.historyCursor < this.history.length - 1 && !this.isEditingImages;
+    return this.historyCursor < this.history.length - 1 && !this.isEditingImages && !!this.activeViewBox;
   }
 
   redo() {
@@ -317,6 +355,7 @@ export class AppComponent implements AfterViewInit {
       this.historyCursor++;
       this.reloadPath(this.history[this.historyCursor]);
       this.historyDisabled = false;
+      this.syncActivePatchFromEditor();
     }
   }
 
@@ -342,6 +381,10 @@ export class AppComponent implements AfterViewInit {
   }
 
   insert(type: SvgCommandTypeAny, after: SvgItem | null, convert: boolean) {
+    if (!this.activeViewBox) {
+      return;
+    }
+
     if (convert) {
       if (after) {
         this.focusedItem = this.parsedPath.changeType(after, (after.relative ? type.toLowerCase() as SvgCommandTypeAny : type));
@@ -421,6 +464,11 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
+    if (!this.rawPath) {
+      this.updateViewPort(0, 0, 100, 100, true);
+      return;
+    }
+
     const bbox = browserComputePathBoundingBox(this.rawPath);
     const k = this.canvasHeight / this.canvasWidth;
     let w = bbox.width + 2;
@@ -435,6 +483,9 @@ export class AppComponent implements AfterViewInit {
   }
 
   scale(x: number, y: number) {
+    if (!this.activeViewBox) {
+      return;
+    }
     this.parsedPath.scale(1 * x, 1 * y);
     this.scaleX = 1;
     this.scaleY = 1;
@@ -442,6 +493,9 @@ export class AppComponent implements AfterViewInit {
   }
 
   translate(x: number, y: number) {
+    if (!this.activeViewBox) {
+      return;
+    }
     this.parsedPath.translate(1 * x, 1 * y);
     this.translateX = 0;
     this.translateY = 0;
@@ -449,21 +503,33 @@ export class AppComponent implements AfterViewInit {
   }
 
   rotate(x: number, y: number, angle: number) {
+    if (!this.activeViewBox) {
+      return;
+    }
     this.parsedPath.rotate(1 * x, 1 * y, 1 * angle);
     this.afterModelChange();
   }
 
   setRelative(rel: boolean) {
+    if (!this.activeViewBox) {
+      return;
+    }
     this.parsedPath.setRelative(rel);
     this.afterModelChange();
   }
 
   reverse() {
+    if (!this.activeViewBox) {
+      return;
+    }
     reversePath(this.parsedPath);
     this.afterModelChange();
   }
 
   optimize() {
+    if (!this.activeViewBox) {
+      return;
+    }
     optimizePath(this.parsedPath, {
       removeUselessCommands: true,
       useHorizontalAndVerticalLines: true,
@@ -476,6 +542,9 @@ export class AppComponent implements AfterViewInit {
   }
 
   setValue(item: SvgItem, idx: number, val: number) {
+    if (!this.activeViewBox) {
+      return;
+    }
     if (!isNaN(val)) {
       item.values[idx] = val;
       this.parsedPath.refreshAbsolutePositions();
@@ -484,12 +553,18 @@ export class AppComponent implements AfterViewInit {
   }
 
   delete(item: SvgItem) {
+    if (!this.activeViewBox) {
+      return;
+    }
     this.focusedItem = null;
     this.parsedPath.delete(item);
     this.afterModelChange();
   }
 
   useAsOrigin(item: SvgItem, subpathOnly?: boolean) {
+    if (!this.activeViewBox) {
+      return;
+    }
     const idx = this.parsedPath.path.indexOf(item);
     changePathOrigin(this.parsedPath, idx, subpathOnly);
     this.afterModelChange();
@@ -497,6 +572,9 @@ export class AppComponent implements AfterViewInit {
   }
 
   reverseSubPath(item: SvgItem) {
+    if (!this.activeViewBox) {
+      return;
+    }
     const idx = this.parsedPath.path.indexOf(item);
     reversePath(this.parsedPath, idx);
     this.afterModelChange();
@@ -504,11 +582,19 @@ export class AppComponent implements AfterViewInit {
   }
 
   afterModelChange() {
+    const activeViewBox = this.activeViewBox;
+    if (activeViewBox) {
+      this.constrainPathToBounds(this.parsedPath, activeViewBox.width, activeViewBox.height);
+    }
     this.reloadPoints();
     this.rawPath = this.parsedPath.asString(4, this.cfg.minifyOutput);
+    this.syncActivePatchFromEditor();
   }
 
   roundValues(decimals: number) {
+    if (!this.activeViewBox) {
+      return;
+    }
     this.reloadPath(this.parsedPath.asString(decimals, this.cfg.minifyOutput));
   }
 
@@ -611,7 +697,12 @@ export class AppComponent implements AfterViewInit {
     this.invalidSyntax = false;
     try {
       this.parsedPath = new SvgPath(this.rawPath);
+      const activeViewBox = this.activeViewBox;
+      if (activeViewBox) {
+        this.constrainPathToBounds(this.parsedPath, activeViewBox.width, activeViewBox.height);
+      }
       this.reloadPoints();
+      this.syncActivePatchFromEditor(false);
       if (autozoom) {
         this.zoomAuto();
       }
@@ -626,6 +717,7 @@ export class AppComponent implements AfterViewInit {
   reloadPoints(): void {
     this.targetPoints = this.parsedPath.targetLocations();
     this.controlPoints = this.parsedPath.controlLocations();
+    this.syncActivePatchFromEditor(false);
   }
 
   toggleLeftPanel(): void {
@@ -691,11 +783,53 @@ export class AppComponent implements AfterViewInit {
       width: this.newViewBox.width,
       height: this.newViewBox.height
     };
+
+    this.selectViewBox(viewBox.id);
+  }
+
+  selectViewBox(id: string): void {
+    this.activateViewBox(id);
+  }
+
+  updateViewBoxValue(
+    viewBoxId: string,
+    field: 'x' | 'y' | 'width' | 'height',
+    value: number
+  ): void {
+    const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
+    if (!viewBox || Number.isNaN(value)) {
+      return;
+    }
+
+    if (field === 'width' || field === 'height') {
+      viewBox[field] = Math.max(1, value);
+      viewBox.patch.localViewPort.width = viewBox.width;
+      viewBox.patch.localViewPort.height = viewBox.height;
+      this.constrainViewBoxPatch(viewBox);
+    } else {
+      viewBox[field] = value;
+    }
+
+    this.viewBoxes = [...this.viewBoxes];
+    if (this.activeViewBoxId === viewBoxId) {
+      this.syncEditorFromViewBox(viewBox);
+    }
+    this.persistViewBoxes();
   }
 
   deleteViewBox(id: string): void {
+    const isDeletingActive = this.activeViewBoxId === id;
     this.viewBoxes = this.viewBoxes.filter((viewBox) => viewBox.id !== id);
     this.persistViewBoxes();
+
+    if (isDeletingActive) {
+      this.activateViewBox(null);
+      return;
+    }
+
+    if (!this.viewBoxes.some((viewBox) => viewBox.id === this.activeViewBoxId)) {
+      this.activateViewBox(null);
+    }
   }
 
   focusItem(it: SvgItem | null): void {
@@ -751,6 +885,115 @@ export class AppComponent implements AfterViewInit {
     setTimeout(() => {
       this.canvas?.refreshCanvasSize();
     }, 0);
+  }
+
+  private resolveInitialActiveViewBoxId(): string | null {
+    const storedActiveViewBoxId = this.storage.getActiveViewBoxId();
+    if (storedActiveViewBoxId && this.viewBoxes.some((viewBox) => viewBox.id === storedActiveViewBoxId)) {
+      return storedActiveViewBoxId;
+    }
+    return null;
+  }
+
+  private activateViewBox(id: string | null): void {
+    const nextActiveId = id && this.viewBoxes.some((viewBox) => viewBox.id === id) ? id : null;
+    this.activeViewBoxId = nextActiveId;
+
+    if (nextActiveId) {
+      this.storage.setActiveViewBoxId(nextActiveId);
+      const activeViewBox = this.viewBoxes.find((viewBox) => viewBox.id === nextActiveId);
+      if (activeViewBox) {
+        this.syncEditorFromViewBox(activeViewBox);
+      }
+      return;
+    }
+
+    this.storage.removeActiveViewBoxId();
+    this.resetEditorState();
+  }
+
+  private syncEditorFromViewBox(viewBox: ViewBoxEntity): void {
+    this.focusedItem = null;
+    this.hoveredItem = null;
+    this.draggedPoint = null;
+    this.invalidSyntax = false;
+
+    this.parsedPath = viewBox.patch.parsedPath;
+    this.targetPoints = viewBox.patch.targetPoints;
+    this.controlPoints = viewBox.patch.controlPoints;
+    this._rawPath = viewBox.patch.rawPath;
+    this.history = viewBox.patch.history;
+    this.historyCursor = viewBox.patch.historyCursor;
+  }
+
+  private resetEditorState(): void {
+    this.focusedItem = null;
+    this.hoveredItem = null;
+    this.draggedPoint = null;
+    this.invalidSyntax = false;
+
+    this.parsedPath = new SvgPath('');
+    this.targetPoints = [];
+    this.controlPoints = [];
+    this._rawPath = '';
+    this.history = [];
+    this.historyCursor = -1;
+  }
+
+  private getActivePatchContext(): ViewBoxPatchContext | null {
+    return this.activeViewBox?.patch || null;
+  }
+
+  private syncActivePatchFromEditor(persist = true): void {
+    const activeViewBox = this.activeViewBox;
+    if (!activeViewBox) {
+      return;
+    }
+
+    activeViewBox.patch.parsedPath = this.parsedPath;
+    activeViewBox.patch.targetPoints = this.targetPoints;
+    activeViewBox.patch.controlPoints = this.controlPoints;
+    activeViewBox.patch.rawPath = this._rawPath;
+    activeViewBox.patch.history = this.history;
+    activeViewBox.patch.historyCursor = this.historyCursor;
+    activeViewBox.patch.localViewPort = {
+      x: 0,
+      y: 0,
+      width: activeViewBox.width,
+      height: activeViewBox.height
+    };
+
+    if (persist) {
+      this.persistViewBoxes();
+    }
+  }
+
+  private constrainViewBoxPatch(viewBox: ViewBoxEntity): void {
+    this.constrainPathToBounds(viewBox.patch.parsedPath, viewBox.width, viewBox.height);
+    viewBox.patch.targetPoints = viewBox.patch.parsedPath.targetLocations();
+    viewBox.patch.controlPoints = viewBox.patch.parsedPath.controlLocations();
+    viewBox.patch.rawPath = viewBox.patch.parsedPath.asString(4, this.cfg.minifyOutput);
+  }
+
+  private constrainPathToBounds(parsedPath: SvgPath, width: number, height: number): void {
+    const clamp = (value: number, maxValue: number) => Math.min(maxValue, Math.max(0, value));
+    const clampPoints = (points: Array<SvgPoint | SvgControlPoint>) => {
+      for (const point of points) {
+        if (!point.movable) {
+          continue;
+        }
+
+        const clampedX = clamp(point.x, width);
+        const clampedY = clamp(point.y, height);
+
+        if (clampedX !== point.x || clampedY !== point.y) {
+          parsedPath.setLocation(point, new Point(clampedX, clampedY));
+        }
+      }
+    };
+
+    clampPoints(parsedPath.targetLocations());
+    clampPoints(parsedPath.controlLocations());
   }
 
   private persistViewBoxes(): void {
@@ -813,7 +1056,8 @@ export class AppComponent implements AfterViewInit {
     try {
       if (rawPath) {
         parsedPath = new SvgPath(rawPath);
-        safeRawPath = rawPath;
+        this.constrainPathToBounds(parsedPath, width, height);
+        safeRawPath = parsedPath.asString(4, this.cfg.minifyOutput);
       }
     } catch {
       parsedPath = new SvgPath('');

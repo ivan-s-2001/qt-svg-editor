@@ -1,5 +1,5 @@
 :host {
-    background-color:#1e1e1e;
+    background-color: #1e1e1e;
     user-select: none;
 }
 
@@ -8,22 +8,34 @@
 }
 
 path {
-    stroke:white;
-    fill:none;
+    stroke: white;
+    fill: none;
 }
+
+:host.has-hall-background path {
+    stroke: #111111;
+}
+
 path.filled {
-    fill:rgba(255,255,255,0.25);
+    fill: rgba(255,255,255,0.25);
 }
+
+:host.has-hall-background path.filled {
+    fill: rgba(17, 17, 17, 0.18);
+}
+
 path.hovered {
     stroke: red;
     fill: none;
 }
+
 path.dragged {
     stroke: rgb(0, 174, 255);
     fill: none;
 }
+
 line.grid {
-    stroke:#353536;
+    stroke: #353536;
 }
 
 line.grid.tick {
@@ -31,45 +43,57 @@ line.grid.tick {
 }
 
 line.control {
-    stroke:gray;
+    stroke: gray;
 }
+
 line.hovered {
-    stroke:red;
+    stroke: red;
 }
+
 circle {
     cursor: pointer;
     stroke: transparent;
 }
+
 circle.control {
-    fill:gray;
+    fill: gray;
 }
+
 circle.target {
-    fill:white;
+    fill: white;
 }
+
 circle.hovered {
-    fill:red;
+    fill: red;
 }
+
 circle.dragged {
-    fill:rgb(0, 174, 255);
+    fill: rgb(0, 174, 255);
 }
+
 :host.preview {
-    background-color:white;
+    background-color: white;
 }
+
 :host.preview path {
-    stroke:black;
+    stroke: black;
 }
+
 :host.preview path.filled {
-    fill:black;
-    stroke:none;
+    fill: black;
+    stroke: none;
 }
+
 :host.preview path.hovered {
     stroke: red;
     fill: none;
 }
+
 :host.preview circle,
 :host.preview line {
     display: none;
 }
+
 text.tick {
     fill: #595959;
     text-anchor: end;
@@ -80,35 +104,44 @@ text.tick {
 image {
     pointer-events: none;
 }
+
 rect.image-control {
     fill: rgba(0,0,0,0);
     stroke: none;
 }
+
 line.image-control {
-    stroke:gray;
+    stroke: gray;
 }
+
 circle.image-control {
-    fill:gray;
+    fill: gray;
 }
+
 .focused-image line.image-control {
-    stroke:rgb(0, 174, 255);
+    stroke: rgb(0, 174, 255);
 }
+
 .focused-image circle.image-control {
-    fill:rgb(0, 174, 255);
+    fill: rgb(0, 174, 255);
 }
 
 .image-control.horizontal {
     cursor: ns-resize;
 }
+
 .image-control.vertical {
     cursor: ew-resize;
 }
+
 .image-control.down {
     cursor: nwse-resize;
 }
+
 .image-control.up {
     cursor: nesw-resize;
 }
+
 .image-control.move {
     cursor: move;
 }
