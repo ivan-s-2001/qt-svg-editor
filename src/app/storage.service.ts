@@ -32,6 +32,7 @@ export type StoredViewBoxPatch = {
 
 export type StoredViewBox = {
   id: string;
+  name: string;
   x: number;
   y: number;
   width: number;
@@ -169,6 +170,7 @@ function normalizeStoredViewBox(viewBox: StoredViewBoxInput | null | undefined, 
 
   return {
     id: typeof viewBox.id === 'string' && viewBox.id.trim() ? viewBox.id : `viewBox-${index + 1}`,
+    name: typeof viewBox.name === 'string' && viewBox.name.trim() ? viewBox.name.trim() : `ViewBox ${index + 1}`,
     x,
     y,
     width,

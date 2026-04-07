@@ -32,6 +32,16 @@ type ViewBoxDraft = {
   height: number;
 };
 
+type ViewBoxDragState = {
+  viewBoxId: string;
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startX: number;
+  startY: number;
+  moved: boolean;
+};
+
 type ViewBoxHistoryEntry = {
   rawPath: string;
   viewBox: {
@@ -59,6 +69,7 @@ type ViewBoxPatchContext = {
 
 type ViewBoxEntity = {
   id: string;
+  name: string;
   x: number;
   y: number;
   width: number;
@@ -151,6 +162,7 @@ export class AppComponent implements AfterViewInit {
   viewBoxes: ViewBoxEntity[] = [];
   activeViewBoxId: string | null = null;
   newViewBox: ViewBoxDraft = { x: 40, y: 40, width: 320, height: 240 };
+  viewBoxDrag: ViewBoxDragState | null = null;
 
   isLeftPanelOpened = true;
   isContextualMenuOpened = false;
@@ -224,6 +236,44 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
+  @HostListener('document:pointermove', ['$event']) onPointerMove($event: PointerEvent) {
+    const dragState = this.viewBoxDrag;
+    if (!dragState || $event.pointerId !== dragState.pointerId) {
+      return;
+    }
+
+    const viewBox = this.viewBoxes.find((item) => item.id === dragState.viewBoxId);
+    if (!viewBox) {
+      this.viewBoxDrag = null;
+      return;
+    }
+
+    const workspaceScale = this.hallLayerScale || 1;
+    const deltaX = ($event.clientX - dragState.startClientX) / workspaceScale;
+    const deltaY = ($event.clientY - dragState.startClientY) / workspaceScale;
+    const nextX = this.normalizeViewBoxCoordinate(dragState.startX + deltaX);
+    const nextY = this.normalizeViewBoxCoordinate(dragState.startY + deltaY);
+
+    if (nextX === viewBox.x && nextY === viewBox.y) {
+      $event.preventDefault();
+      return;
+    }
+
+    dragState.moved = true;
+    viewBox.x = nextX;
+    viewBox.y = nextY;
+    this.viewBoxes = [...this.viewBoxes];
+    $event.preventDefault();
+  }
+
+  @HostListener('document:pointerup', ['$event']) onPointerUp($event: PointerEvent) {
+    this.finishViewBoxDrag($event.pointerId);
+  }
+
+  @HostListener('document:pointercancel', ['$event']) onPointerCancel($event: PointerEvent) {
+    this.finishViewBoxDrag($event.pointerId);
+  }
+
   get decimals() {
     return this.cfg.snapToGrid ? 0 : this.cfg.decimalPrecision;
   }
@@ -257,7 +307,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   get activeViewBoxPanelInfo(): string {
-    return this.activeViewBox ? this.activeViewBox.id : 'not selected';
+    return this.activeViewBox ? this.activeViewBox.name : 'not selected';
   }
 
   get canCreateViewBox(): boolean {
@@ -286,6 +336,10 @@ export class AppComponent implements AfterViewInit {
 
   get activeViewBoxCenterY(): number {
     return this.activeViewBox ? this.activeViewBox.height / 2 : 0;
+  }
+
+  isDraggingViewBoxLabel(viewBoxId: string): boolean {
+    return this.viewBoxDrag?.viewBoxId === viewBoxId;
   }
 
   ngAfterViewInit() {
@@ -848,6 +902,7 @@ export class AppComponent implements AfterViewInit {
 
     const viewBox = this.inflateViewBox({
       id: this.generateViewBoxId(),
+      name: this.createDefaultViewBoxName(),
       x,
       y,
       width,
@@ -881,6 +936,44 @@ export class AppComponent implements AfterViewInit {
 
   selectViewBox(id: string): void {
     this.activateViewBox(id);
+  }
+
+  updateViewBoxName(viewBoxId: string, value: string): void {
+    const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
+    if (!viewBox) {
+      return;
+    }
+
+    const fallbackName = this.getFallbackViewBoxName(viewBoxId);
+    const normalizedName = this.normalizeViewBoxName(value, fallbackName);
+    if (viewBox.name === normalizedName) {
+      return;
+    }
+
+    viewBox.name = normalizedName;
+    this.viewBoxes = [...this.viewBoxes];
+    this.persistViewBoxes();
+  }
+
+  startViewBoxDrag(viewBoxId: string, $event: PointerEvent): void {
+    const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
+    if (!viewBox) {
+      return;
+    }
+
+    this.canvas?.stopDrag();
+    this.viewBoxDrag = {
+      viewBoxId,
+      pointerId: $event.pointerId,
+      startClientX: $event.clientX,
+      startClientY: $event.clientY,
+      startX: viewBox.x,
+      startY: viewBox.y,
+      moved: false
+    };
+
+    $event.preventDefault();
+    $event.stopPropagation();
   }
 
   updateViewBoxValue(
@@ -988,6 +1081,54 @@ export class AppComponent implements AfterViewInit {
     setTimeout(() => {
       this.canvas?.refreshCanvasSize();
     }, 0);
+  }
+
+  private finishViewBoxDrag(pointerId: number): void {
+    const dragState = this.viewBoxDrag;
+    if (!dragState || dragState.pointerId !== pointerId) {
+      return;
+    }
+
+    const draggedViewBoxId = dragState.viewBoxId;
+    const moved = dragState.moved;
+    this.viewBoxDrag = null;
+
+    if (!moved) {
+      return;
+    }
+
+    this.viewBoxes = [...this.viewBoxes];
+    if (this.activeViewBoxId === draggedViewBoxId) {
+      this.pushHistory();
+      return;
+    }
+
+    this.persistViewBoxes();
+  }
+
+  private createDefaultViewBoxName(): string {
+    const existingNames = new Set(
+      this.viewBoxes
+        .map((viewBox) => viewBox.name.trim().toLowerCase())
+        .filter((name) => !!name)
+    );
+
+    let index = 1;
+    while (existingNames.has(`viewbox ${index}`.toLowerCase())) {
+      index++;
+    }
+
+    return `ViewBox ${index}`;
+  }
+
+  private getFallbackViewBoxName(viewBoxId: string): string {
+    const index = this.viewBoxes.findIndex((viewBox) => viewBox.id === viewBoxId);
+    return `ViewBox ${index >= 0 ? index + 1 : 1}`;
+  }
+
+  private normalizeViewBoxName(value: string | null | undefined, fallbackName: string): string {
+    const trimmed = typeof value === 'string' ? value.trim() : '';
+    return trimmed || fallbackName;
   }
 
   private resolveInitialActiveViewBoxId(): string | null {
@@ -1180,6 +1321,7 @@ export class AppComponent implements AfterViewInit {
   private serializeViewBox(viewBox: ViewBoxEntity): StoredViewBox {
     return {
       id: viewBox.id,
+      name: this.normalizeViewBoxName(viewBox.name, this.getFallbackViewBoxName(viewBox.id)),
       x: this.normalizeViewBoxCoordinate(viewBox.x),
       y: this.normalizeViewBoxCoordinate(viewBox.y),
       width: this.normalizeViewBoxSize(viewBox.width),
@@ -1211,8 +1353,11 @@ export class AppComponent implements AfterViewInit {
     const width = this.normalizeViewBoxSize(viewBox.width);
     const height = this.normalizeViewBoxSize(viewBox.height);
 
+    const id = viewBox.id || this.generateViewBoxId();
+
     return {
-      id: viewBox.id || this.generateViewBoxId(),
+      id,
+      name: this.normalizeViewBoxName(viewBox.name, `ViewBox ${this.viewBoxes.length + 1}`),
       x: this.normalizeViewBoxCoordinate(viewBox.x),
       y: this.normalizeViewBoxCoordinate(viewBox.y),
       width,

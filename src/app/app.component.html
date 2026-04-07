@@ -80,7 +80,10 @@
                         (click)="selectViewBox(viewBox.id)"
                     >
                         <div class="viewbox-card-header">
-                            <div class="viewbox-card-title">{{viewBox.id}}</div>
+                            <div>
+                                <div class="viewbox-card-title">{{viewBox.name}}</div>
+                                <div class="viewbox-card-subtitle">{{viewBox.id}}</div>
+                            </div>
                             <div class="viewbox-card-actions">
                                 <div class="viewbox-card-badge" *ngIf="viewBox.id === activeViewBoxId">active</div>
                                 <button
@@ -111,10 +114,19 @@
             <app-expandable panelTitle="Active viewBox" [panelInfo]="activeViewBoxPanelInfo" [opened]="true">
                 <ng-container *ngIf="activeViewBox; else noActiveViewBox">
                     <div class="row active-viewbox-note">
-                        Patch-конструктор сейчас работает только внутри {{activeViewBox.id}}
+                        Patch-конструктор сейчас работает только внутри {{activeViewBox.name}}
                     </div>
 
                     <div class="viewbox-form">
+                        <div class="input-block viewbox-name-block">
+                            <label>Name</label>
+                            <input
+                                class="app-input"
+                                [ngModel]="activeViewBox.name"
+                                (ngModelChange)="updateViewBoxName(activeViewBox.id, $event)"
+                                placeholder="ViewBox name"
+                            >
+                        </div>
                         <div class="input-block">
                             <label>X</label>
                             <input
@@ -166,6 +178,10 @@
                     <div class="row active-viewbox-meta">
                         Patch ограничен рамками выбранного viewBox и не затрагивает другие контейнеры
                     </div>
+
+                    <div class="row active-viewbox-meta">
+                        Перетаскивание контейнера доступно только за ярлычок названия на сцене
+                    </div>
                 </ng-container>
 
                 <ng-template #noActiveViewBox>
@@ -175,7 +191,7 @@
                 </ng-template>
             </app-expandable>
 
-            <app-expandable panelTitle="Active patch" [panelInfo]="activeViewBox ? activeViewBox.id : 'none'" [opened]="true">
+            <app-expandable panelTitle="Active patch" [panelInfo]="activeViewBox ? activeViewBox.name : 'none'" [opened]="true">
                 <ng-container *ngIf="activeViewBox; else noActivePatch">
                     <div class="row">
                         <div class="input-block" style="flex-grow:1"  [class.has-error]="invalidSyntax">
@@ -529,7 +545,12 @@
                         [style.width.px]="viewBox.width"
                         [style.height.px]="viewBox.height"
                     >
-                        <div class="viewbox-frame-label">{{viewBox.id}}</div>
+                        <div
+                            class="viewbox-frame-label"
+                            [class.dragging]="isDraggingViewBoxLabel(viewBox.id)"
+                            (pointerdown)="startViewBoxDrag(viewBox.id, $event)"
+                            [title]="viewBox.name"
+                        >{{viewBox.name}}</div>
 
                         <svg
                             *ngIf="viewBox.patch.rawPath && viewBox.id !== activeViewBoxId"
