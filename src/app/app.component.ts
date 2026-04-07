@@ -4,7 +4,7 @@ import { SvgPath, SvgItem, Point, SvgPoint, SvgControlPoint, formatNumber } from
 import type { SvgCommandType, SvgCommandTypeAny } from '../lib/svg-command-types';
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { StorageService } from './storage.service';
+import { StorageService, StoredViewBox } from './storage.service';
 import { CanvasComponent } from './canvas/canvas.component';
 import { Image } from './image';
 import { UploadImageComponent } from './upload-image/upload-image.component';
@@ -25,6 +25,37 @@ type ExtractedHall = {
   height: number;
 };
 
+type ViewBoxDraft = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type ViewBoxPatchContext = {
+  rawPath: string;
+  parsedPath: SvgPath;
+  targetPoints: SvgPoint[];
+  controlPoints: SvgControlPoint[];
+  history: string[];
+  historyCursor: number;
+  localViewPort: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+};
+
+type ViewBoxEntity = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  createdAt: string;
+  patch: ViewBoxPatchContext;
+};
 
 const DEFAULT_HALL_CSS = `.hall {position:relative}
 .hall * {-webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}
@@ -109,12 +140,16 @@ export class AppComponent implements AfterViewInit {
   hallHeight = 0;
   hallError = '';
 
+  viewBoxes: ViewBoxEntity[] = [];
+  newViewBox: ViewBoxDraft = { x: 40, y: 40, width: 320, height: 240 };
+
   isLeftPanelOpened = true;
   isContextualMenuOpened = false;
   isEditingImages = false;
 
   max = Math.max;
   trackByIndex = (idx: number, _: unknown) => idx;
+  trackByViewBoxId = (_: number, viewBox: ViewBoxEntity) => viewBox.id;
   formatNumber = (v: number) => formatNumber(v, 4);
 
   constructor(
@@ -132,6 +167,8 @@ export class AppComponent implements AfterViewInit {
     if (this.hallFragment) {
       this.loadHallFragment(this.hallFragment, false);
     }
+
+    this.viewBoxes = this.storage.getViewBoxes().map((viewBox) => this.inflateViewBox(viewBox));
 
     this.reloadPath(this.rawPath, true);
   }
@@ -201,6 +238,14 @@ export class AppComponent implements AfterViewInit {
 
   get hallLayerOffsetY(): number {
     return this.strokeWidth > 0 ? -this.cfg.viewPortY / this.strokeWidth : 0;
+  }
+
+  get viewBoxPanelInfo(): string {
+    return this.viewBoxes.length.toString();
+  }
+
+  get canCreateViewBox(): boolean {
+    return this.newViewBox.width > 0 && this.newViewBox.height > 0;
   }
 
   ngAfterViewInit() {
@@ -613,6 +658,46 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
+  createViewBox(): void {
+    const width = Math.max(1, this.newViewBox.width);
+    const height = Math.max(1, this.newViewBox.height);
+
+    const viewBox = this.inflateViewBox({
+      id: this.generateViewBoxId(),
+      x: this.newViewBox.x,
+      y: this.newViewBox.y,
+      width,
+      height,
+      createdAt: new Date().toISOString(),
+      patch: {
+        rawPath: '',
+        history: [],
+        historyCursor: -1,
+        localViewPort: {
+          x: 0,
+          y: 0,
+          width,
+          height
+        }
+      }
+    });
+
+    this.viewBoxes = [...this.viewBoxes, viewBox];
+    this.persistViewBoxes();
+
+    this.newViewBox = {
+      x: this.newViewBox.x + 24,
+      y: this.newViewBox.y + 24,
+      width: this.newViewBox.width,
+      height: this.newViewBox.height
+    };
+  }
+
+  deleteViewBox(id: string): void {
+    this.viewBoxes = this.viewBoxes.filter((viewBox) => viewBox.id !== id);
+    this.persistViewBoxes();
+  }
+
   focusItem(it: SvgItem | null): void {
     if (it !== this.focusedItem) {
       this.focusedItem = it;
@@ -666,6 +751,98 @@ export class AppComponent implements AfterViewInit {
     setTimeout(() => {
       this.canvas?.refreshCanvasSize();
     }, 0);
+  }
+
+  private persistViewBoxes(): void {
+    this.storage.setViewBoxes(this.viewBoxes.map((viewBox) => this.serializeViewBox(viewBox)));
+  }
+
+  private serializeViewBox(viewBox: ViewBoxEntity): StoredViewBox {
+    return {
+      id: viewBox.id,
+      x: viewBox.x,
+      y: viewBox.y,
+      width: viewBox.width,
+      height: viewBox.height,
+      createdAt: viewBox.createdAt,
+      patch: {
+        rawPath: viewBox.patch.rawPath,
+        history: [...viewBox.patch.history],
+        historyCursor: viewBox.patch.historyCursor,
+        localViewPort: {
+          x: 0,
+          y: 0,
+          width: viewBox.width,
+          height: viewBox.height
+        }
+      }
+    };
+  }
+
+  private inflateViewBox(viewBox: StoredViewBox): ViewBoxEntity {
+    const width = Math.max(1, viewBox.width);
+    const height = Math.max(1, viewBox.height);
+
+    return {
+      id: viewBox.id || this.generateViewBoxId(),
+      x: viewBox.x,
+      y: viewBox.y,
+      width,
+      height,
+      createdAt: viewBox.createdAt || new Date().toISOString(),
+      patch: this.createViewBoxPatchContext(
+        width,
+        height,
+        viewBox.patch?.rawPath || '',
+        viewBox.patch?.history || [],
+        viewBox.patch?.historyCursor ?? -1
+      )
+    };
+  }
+
+  private createViewBoxPatchContext(
+    width: number,
+    height: number,
+    rawPath = '',
+    history: string[] = [],
+    historyCursor = -1
+  ): ViewBoxPatchContext {
+    let parsedPath = new SvgPath('');
+    let safeRawPath = '';
+
+    try {
+      if (rawPath) {
+        parsedPath = new SvgPath(rawPath);
+        safeRawPath = rawPath;
+      }
+    } catch {
+      parsedPath = new SvgPath('');
+      safeRawPath = '';
+    }
+
+    const normalizedHistory = history.length > 0 ? [...history] : (safeRawPath ? [safeRawPath] : []);
+    const normalizedCursor = normalizedHistory.length > 0
+      ? Math.min(Math.max(historyCursor, 0), normalizedHistory.length - 1)
+      : -1;
+
+    return {
+      rawPath: safeRawPath,
+      parsedPath,
+      targetPoints: parsedPath.targetLocations(),
+      controlPoints: parsedPath.controlLocations(),
+      history: normalizedHistory,
+      historyCursor: normalizedCursor,
+      localViewPort: {
+        x: 0,
+        y: 0,
+        width,
+        height
+      }
+    };
+  }
+
+  private generateViewBoxId(): string {
+    return `viewBox-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
   private decorateHallMarkup(markup: string, width: number, height: number): string {

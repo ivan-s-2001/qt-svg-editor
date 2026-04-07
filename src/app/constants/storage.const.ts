@@ -4,7 +4,8 @@
 export const STORAGE = {
   STORED_PATHS: 'storedPaths',
   CONFIG_PREFIX: 'SaveDecorator',
-  HALL_HTML: 'qtSvgEditor.hallHtml'
+  HALL_HTML: 'qtSvgEditor.hallHtml',
+  VIEW_BOXES: 'qtSvgEditor.viewBoxes'
 } as const;
 
 export function getConfigKey(className: string, propertyKey: string): string {

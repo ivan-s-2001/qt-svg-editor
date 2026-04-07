@@ -87,6 +87,64 @@
                 </div>
             </app-expandable>
 
+            <app-expandable panelTitle="ViewBoxes" [panelInfo]="viewBoxPanelInfo" [opened]="true">
+                <div class="viewbox-form">
+                    <div class="input-block">
+                        <label>X</label>
+                        <input class="app-input" appFormatter [(numberValue)]="newViewBox.x">
+                    </div>
+                    <div class="input-block">
+                        <label>Y</label>
+                        <input class="app-input" appFormatter [(numberValue)]="newViewBox.y">
+                    </div>
+                    <div class="input-block">
+                        <label>Width</label>
+                        <input class="app-input" appFormatter formatterType="positive-float" [(numberValue)]="newViewBox.width">
+                    </div>
+                    <div class="input-block">
+                        <label>Height</label>
+                        <input class="app-input" appFormatter formatterType="positive-float" [(numberValue)]="newViewBox.height">
+                    </div>
+                </div>
+
+                <div class="row viewbox-actions">
+                    <button mat-flat-button color="primary" class="mat-flat-button" (click)="createViewBox()" [disabled]="!hasHall || !canCreateViewBox">
+                        Add viewBox
+                    </button>
+
+                    <div class="viewbox-hint" *ngIf="!hasHall">
+                        Load hall first to place viewBox containers on the workspace
+                    </div>
+                </div>
+
+                <div class="viewbox-list" *ngIf="viewBoxes.length > 0; else noViewBoxes">
+                    <div class="viewbox-card" *ngFor="let viewBox of viewBoxes; trackBy: trackByViewBoxId">
+                        <div class="viewbox-card-header">
+                            <div class="viewbox-card-title">{{viewBox.id}}</div>
+                            <button
+                                mat-icon-button
+                                type="button"
+                                (click)="deleteViewBox(viewBox.id)"
+                                matTooltip="Delete viewBox"
+                                matTooltipPosition="left"
+                            >
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <div class="viewbox-card-line">Workspace: x {{viewBox.x}}, y {{viewBox.y}}</div>
+                        <div class="viewbox-card-line">Size: {{viewBox.width}} × {{viewBox.height}}</div>
+                        <div class="viewbox-card-line">Patch context: local origin 0,0 · local size {{viewBox.patch.localViewPort.width}} × {{viewBox.patch.localViewPort.height}}</div>
+                        <div class="viewbox-card-line">Commands in own patch: {{viewBox.patch.parsedPath.path.length}}</div>
+                    </div>
+                </div>
+
+                <ng-template #noViewBoxes>
+                    <div class="row viewbox-empty">
+                        No viewBox containers yet
+                    </div>
+                </ng-template>
+            </app-expandable>
+
             <app-expandable panelTitle="Configuration" [opened]="true">
                 <div class="row">
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
@@ -294,6 +352,19 @@
                         class="hall-workspace-content"
                         [innerHTML]="hallHtml"
                     ></div>
+
+                    <div class="viewbox-overlay-layer" *ngIf="viewBoxes.length > 0">
+                        <div
+                            *ngFor="let viewBox of viewBoxes; trackBy: trackByViewBoxId"
+                            class="viewbox-frame"
+                            [style.left.px]="viewBox.x"
+                            [style.top.px]="viewBox.y"
+                            [style.width.px]="viewBox.width"
+                            [style.height.px]="viewBox.height"
+                        >
+                            <div class="viewbox-frame-label">{{viewBox.id}}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -152,6 +152,59 @@ textarea {
     font-size: 12px;
 }
 
+.viewbox-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.viewbox-actions {
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.viewbox-hint,
+.viewbox-empty {
+    color: #c8c8c8;
+    font-size: 12px;
+}
+
+.viewbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.viewbox-card {
+    padding: 10px;
+    border: 1px solid #3f3f46;
+    border-radius: 6px;
+    background: #2d2d30;
+}
+
+.viewbox-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.viewbox-card-title {
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.viewbox-card-line {
+    margin-top: 4px;
+    color: #c8c8c8;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 /* Drawings */
 .drawings {
     --mat-fab-small-touch-target-display: none;
@@ -229,6 +282,7 @@ textarea {
 }
 
 .hall-workspace-layer {
+    position: relative;
     transform-origin: top left;
     pointer-events: none;
 }
@@ -242,6 +296,33 @@ textarea {
 .hall-workspace-content,
 .hall-workspace-content * {
     pointer-events: none;
+}
+
+.viewbox-overlay-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.viewbox-frame {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px dashed #000000;
+    background: transparent;
+}
+
+.viewbox-frame-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.92);
+    border-right: 1px dashed #000000;
+    border-bottom: 1px dashed #000000;
+    color: #000000;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 @media screen and (max-width: 500px) {
