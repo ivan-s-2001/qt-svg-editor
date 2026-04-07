@@ -239,11 +239,11 @@ function normalizeHistoryEntry(
 }
 
 function normalizeNumber(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback;
 }
 
 function normalizePositiveNumber(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.max(1, Math.ceil(value)) : fallback;
 }
 
 function normalizeInteger(value: unknown, fallback: number): number {

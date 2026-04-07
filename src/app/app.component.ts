@@ -513,21 +513,38 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
+    const currentX = viewBox.x;
+    const currentY = viewBox.y;
     const nextWidth = viewBox.width * x;
     const nextHeight = viewBox.height * y;
-    const offsetX = Math.min(0, nextWidth);
-    const offsetY = Math.min(0, nextHeight);
+    const worldLeft = currentX + Math.min(0, nextWidth);
+    const worldTop = currentY + Math.min(0, nextHeight);
+    const worldRight = currentX + Math.max(0, nextWidth);
+    const worldBottom = currentY + Math.max(0, nextHeight);
+    const localOriginOffsetX = -Math.min(0, nextWidth);
+    const localOriginOffsetY = -Math.min(0, nextHeight);
 
     this.parsedPath.scale(x, y);
 
-    if (offsetX !== 0 || offsetY !== 0) {
-      this.parsedPath.translate(-offsetX, -offsetY);
+    if (localOriginOffsetX !== 0 || localOriginOffsetY !== 0) {
+      this.parsedPath.translate(localOriginOffsetX, localOriginOffsetY);
     }
 
-    viewBox.x += offsetX;
-    viewBox.y += offsetY;
-    viewBox.width = Math.max(1, Math.abs(nextWidth));
-    viewBox.height = Math.max(1, Math.abs(nextHeight));
+    const nextX = Math.floor(worldLeft);
+    const nextY = Math.floor(worldTop);
+    const nextRight = Math.ceil(worldRight);
+    const nextBottom = Math.ceil(worldBottom);
+    const localOffsetX = worldLeft - nextX;
+    const localOffsetY = worldTop - nextY;
+
+    if (localOffsetX !== 0 || localOffsetY !== 0) {
+      this.parsedPath.translate(localOffsetX, localOffsetY);
+    }
+
+    viewBox.x = nextX;
+    viewBox.y = nextY;
+    viewBox.width = Math.max(1, nextRight - nextX);
+    viewBox.height = Math.max(1, nextBottom - nextY);
 
     this.scaleX = 1;
     this.scaleY = 1;
@@ -541,8 +558,8 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
-    viewBox.x += x;
-    viewBox.y += y;
+    viewBox.x = this.normalizeViewBoxCoordinate(viewBox.x + x);
+    viewBox.y = this.normalizeViewBoxCoordinate(viewBox.y + y);
 
     this.translateX = 0;
     this.translateY = 0;
@@ -824,13 +841,15 @@ export class AppComponent implements AfterViewInit {
   }
 
   createViewBox(): void {
-    const width = Math.max(1, this.newViewBox.width);
-    const height = Math.max(1, this.newViewBox.height);
+    const x = this.normalizeViewBoxCoordinate(this.newViewBox.x);
+    const y = this.normalizeViewBoxCoordinate(this.newViewBox.y);
+    const width = this.normalizeViewBoxSize(this.newViewBox.width);
+    const height = this.normalizeViewBoxSize(this.newViewBox.height);
 
     const viewBox = this.inflateViewBox({
       id: this.generateViewBoxId(),
-      x: this.newViewBox.x,
-      y: this.newViewBox.y,
+      x,
+      y,
       width,
       height,
       createdAt: new Date().toISOString(),
@@ -851,10 +870,10 @@ export class AppComponent implements AfterViewInit {
     this.persistViewBoxes();
 
     this.newViewBox = {
-      x: this.newViewBox.x + 24,
-      y: this.newViewBox.y + 24,
-      width: this.newViewBox.width,
-      height: this.newViewBox.height
+      x: x + 24,
+      y: y + 24,
+      width,
+      height
     };
 
     this.selectViewBox(viewBox.id);
@@ -875,8 +894,8 @@ export class AppComponent implements AfterViewInit {
     }
 
     const normalizedValue = field === 'width' || field === 'height'
-      ? Math.max(1, value)
-      : value;
+      ? this.normalizeViewBoxSize(value)
+      : this.normalizeViewBoxCoordinate(value);
 
     if (viewBox[field] === normalizedValue) {
       return;
@@ -1040,6 +1059,14 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
+  private normalizeViewBoxCoordinate(value: number): number {
+    return Number.isFinite(value) ? Math.round(value) : 0;
+  }
+
+  private normalizeViewBoxSize(value: number): number {
+    return Number.isFinite(value) && value > 0 ? Math.max(1, Math.ceil(value)) : 1;
+  }
+
   private createCurrentHistoryEntry(): ViewBoxHistoryEntry {
     return this.createHistoryEntry(this.rawPath, this.activeViewBox);
   }
@@ -1051,10 +1078,10 @@ export class AppComponent implements AfterViewInit {
     return {
       rawPath,
       viewBox: {
-        x: viewBox?.x ?? 0,
-        y: viewBox?.y ?? 0,
-        width: Math.max(1, viewBox?.width ?? 1),
-        height: Math.max(1, viewBox?.height ?? 1)
+        x: this.normalizeViewBoxCoordinate(viewBox?.x ?? 0),
+        y: this.normalizeViewBoxCoordinate(viewBox?.y ?? 0),
+        width: this.normalizeViewBoxSize(viewBox?.width ?? 1),
+        height: this.normalizeViewBoxSize(viewBox?.height ?? 1)
       }
     };
   }
@@ -1066,10 +1093,10 @@ export class AppComponent implements AfterViewInit {
 
     const activeViewBox = this.activeViewBox;
     if (activeViewBox) {
-      activeViewBox.x = entry.viewBox.x;
-      activeViewBox.y = entry.viewBox.y;
-      activeViewBox.width = Math.max(1, entry.viewBox.width);
-      activeViewBox.height = Math.max(1, entry.viewBox.height);
+      activeViewBox.x = this.normalizeViewBoxCoordinate(entry.viewBox.x);
+      activeViewBox.y = this.normalizeViewBoxCoordinate(entry.viewBox.y);
+      activeViewBox.width = this.normalizeViewBoxSize(entry.viewBox.width);
+      activeViewBox.height = this.normalizeViewBoxSize(entry.viewBox.height);
       activeViewBox.patch.localViewPort = {
         x: 0,
         y: 0,
@@ -1153,20 +1180,20 @@ export class AppComponent implements AfterViewInit {
   private serializeViewBox(viewBox: ViewBoxEntity): StoredViewBox {
     return {
       id: viewBox.id,
-      x: viewBox.x,
-      y: viewBox.y,
-      width: viewBox.width,
-      height: viewBox.height,
+      x: this.normalizeViewBoxCoordinate(viewBox.x),
+      y: this.normalizeViewBoxCoordinate(viewBox.y),
+      width: this.normalizeViewBoxSize(viewBox.width),
+      height: this.normalizeViewBoxSize(viewBox.height),
       createdAt: viewBox.createdAt,
       patch: {
         rawPath: viewBox.patch.rawPath,
         history: viewBox.patch.history.map((entry) => ({
           rawPath: entry.rawPath,
           viewBox: {
-            x: entry.viewBox.x,
-            y: entry.viewBox.y,
-            width: entry.viewBox.width,
-            height: entry.viewBox.height
+            x: this.normalizeViewBoxCoordinate(entry.viewBox.x),
+            y: this.normalizeViewBoxCoordinate(entry.viewBox.y),
+            width: this.normalizeViewBoxSize(entry.viewBox.width),
+            height: this.normalizeViewBoxSize(entry.viewBox.height)
           }
         })),
         historyCursor: viewBox.patch.historyCursor,
@@ -1181,13 +1208,13 @@ export class AppComponent implements AfterViewInit {
   }
 
   private inflateViewBox(viewBox: StoredViewBox): ViewBoxEntity {
-    const width = Math.max(1, viewBox.width);
-    const height = Math.max(1, viewBox.height);
+    const width = this.normalizeViewBoxSize(viewBox.width);
+    const height = this.normalizeViewBoxSize(viewBox.height);
 
     return {
       id: viewBox.id || this.generateViewBoxId(),
-      x: viewBox.x,
-      y: viewBox.y,
+      x: this.normalizeViewBoxCoordinate(viewBox.x),
+      y: this.normalizeViewBoxCoordinate(viewBox.y),
       width,
       height,
       createdAt: viewBox.createdAt || new Date().toISOString(),
@@ -1225,10 +1252,10 @@ export class AppComponent implements AfterViewInit {
       ? history.map((entry) => ({
           rawPath: entry.rawPath,
           viewBox: {
-            x: entry.viewBox.x,
-            y: entry.viewBox.y,
-            width: Math.max(1, entry.viewBox.width),
-            height: Math.max(1, entry.viewBox.height)
+            x: this.normalizeViewBoxCoordinate(entry.viewBox.x),
+            y: this.normalizeViewBoxCoordinate(entry.viewBox.y),
+            width: this.normalizeViewBoxSize(entry.viewBox.width),
+            height: this.normalizeViewBoxSize(entry.viewBox.height)
           }
         }))
       : (safeRawPath ? [this.createHistoryEntry(safeRawPath, { x: 0, y: 0, width, height })] : []);

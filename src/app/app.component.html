@@ -50,11 +50,11 @@
                     </div>
                     <div class="input-block">
                         <label>Width</label>
-                        <input class="app-input" appFormatter formatterType="positive-float" [(numberValue)]="newViewBox.width">
+                        <input class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.width">
                     </div>
                     <div class="input-block">
                         <label>Height</label>
-                        <input class="app-input" appFormatter formatterType="positive-float" [(numberValue)]="newViewBox.height">
+                        <input class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.height">
                     </div>
                 </div>
 
@@ -138,7 +138,7 @@
                             <input
                                 class="app-input"
                                 appFormatter
-                                formatterType="positive-float"
+                                formatterType="positive-integer"
                                 [numberValue]="activeViewBox.width"
                                 (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'width', $event)"
                             >
@@ -148,7 +148,7 @@
                             <input
                                 class="app-input"
                                 appFormatter
-                                formatterType="positive-float"
+                                formatterType="positive-integer"
                                 [numberValue]="activeViewBox.height"
                                 (numberValueChange)="updateViewBoxValue(activeViewBox.id, 'height', $event)"
                             >
@@ -295,11 +295,11 @@
                     <div class="row path-operations-grid">
                         <div class="input-block" style="flex:1">
                             <label>Translate X</label>
-                            <input appFormatter [(numberValue)]="translateX" class="app-input">
+                            <input appFormatter [(numberValue)]="translateX" class="app-input" step="1">
                         </div>
                         <div class="input-block" style="flex:1">
                             <label>Translate Y</label>
-                            <input appFormatter [(numberValue)]="translateY" class="app-input">
+                            <input appFormatter [(numberValue)]="translateY" class="app-input" step="1">
                         </div>
                         <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Move the active viewBox across the hall workspace" matTooltipPosition="right" class="mat-flat-button">Translate</button>
                     </div>
