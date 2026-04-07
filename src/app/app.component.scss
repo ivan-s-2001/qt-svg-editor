@@ -108,6 +108,10 @@ textarea {
 input.app-input[type='number'],
 input.svg-value[type='number'] {
     appearance: auto;
+    -moz-appearance: auto;
+    min-height: 36px;
+    padding-right: 8px;
+    font-variant-numeric: tabular-nums;
 }
 
 input.app-input[type='number']::-webkit-outer-spin-button,
@@ -115,6 +119,10 @@ input.app-input[type='number']::-webkit-inner-spin-button,
 input.svg-value[type='number']::-webkit-outer-spin-button,
 input.svg-value[type='number']::-webkit-inner-spin-button {
     opacity: 1;
+    margin-left: 6px;
+    min-height: 28px;
+    width: 14px;
+    cursor: pointer;
 }
 
 input.svg-value {
@@ -413,11 +421,13 @@ textarea {
 .hall-workspace-layer {
     position: relative;
     transform-origin: top left;
+    background: #ffffff;
 }
 
 .hall-workspace-content {
     position: absolute;
     inset: 0;
+    background: #ffffff;
 }
 
 .viewbox-overlay-layer {
@@ -545,6 +555,17 @@ textarea {
 .left-column textarea,
 .left-column input {
     border-radius: 8px;
+}
+
+.left-column input[type='number'] {
+    background-clip: padding-box;
+}
+
+.left-column input[type='number']::-webkit-inner-spin-button,
+.left-column input[type='number']::-webkit-outer-spin-button {
+    opacity: 1;
+    border-left: 1px solid rgba(91, 91, 91, 0.2);
+    border-radius: 0 8px 8px 0;
 }
 
 .left-column .app-input:focus,
