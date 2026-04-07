@@ -108,10 +108,13 @@ textarea {
 input.app-input[type='number'],
 input.svg-value[type='number'] {
     appearance: auto;
+    -webkit-appearance: auto;
     -moz-appearance: auto;
     min-height: 36px;
-    padding-right: 8px;
+    height: 36px;
+    line-height: normal;
     font-variant-numeric: tabular-nums;
+    padding: 0 6px;
 }
 
 input.app-input[type='number']::-webkit-outer-spin-button,
@@ -119,20 +122,19 @@ input.app-input[type='number']::-webkit-inner-spin-button,
 input.svg-value[type='number']::-webkit-outer-spin-button,
 input.svg-value[type='number']::-webkit-inner-spin-button {
     opacity: 1;
-    margin-left: 6px;
-    min-height: 28px;
-    width: 14px;
+    margin: 0;
     cursor: pointer;
 }
 
 input.svg-value {
-    width: 38px;
+    width: 58px;
+    min-width: 58px;
     text-align: center;
     font-size: 10px;
     margin-left: 1px;
     margin-right: 1px;
-    padding-left: 1px;
-    padding-right: 1px;
+    padding-left: 4px;
+    padding-right: 4px;
 }
 
 .type-token {
@@ -421,13 +423,11 @@ textarea {
 .hall-workspace-layer {
     position: relative;
     transform-origin: top left;
-    background: #ffffff;
 }
 
 .hall-workspace-content {
     position: absolute;
     inset: 0;
-    background: #ffffff;
 }
 
 .viewbox-overlay-layer {
@@ -440,15 +440,15 @@ textarea {
 .viewbox-frame {
     position: absolute;
     border: 2px dashed rgba(91, 91, 91, 0.92);
-    background: rgba(255, 255, 255, 0.02);
-    box-shadow: inset 0 0 0 1px rgba(91, 91, 91, 0.18);
+    background: transparent;
+    box-shadow: none;
     pointer-events: none;
 }
 
 .viewbox-frame.active {
     border-color: var(--brand-primary);
-    background: rgba(181, 40, 79, 0.08);
-    box-shadow: inset 0 0 0 1px var(--brand-primary-soft-strong);
+    background: transparent;
+    box-shadow: 0 0 0 1px var(--brand-primary-soft-strong);
 }
 
 .viewbox-frame-label {
@@ -559,13 +559,13 @@ textarea {
 
 .left-column input[type='number'] {
     background-clip: padding-box;
+    padding-right: 6px;
 }
 
 .left-column input[type='number']::-webkit-inner-spin-button,
 .left-column input[type='number']::-webkit-outer-spin-button {
     opacity: 1;
-    border-left: 1px solid rgba(91, 91, 91, 0.2);
-    border-radius: 0 8px 8px 0;
+    margin: 0;
 }
 
 .left-column .app-input:focus,
