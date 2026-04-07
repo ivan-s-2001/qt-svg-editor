@@ -80,6 +80,30 @@ type ViewBoxEntity = {
 };
 
 
+const DEFAULT_HALL_CSS = `.hall {position:relative}
+.hall * {-webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}
+.hall .r {position:absolute;z-index:1;cursor:pointer;border:1px solid black;overflow:hidden;box-sizing:border-box;}
+.hall .r .n, .hall .r .p {text-align:center;font-size:10px;line-height:10px;color:#000000}
+.hall .r .n {border-bottom:1px dotted black;padding-bottom:1px;display:table-cell;vertical-align:bottom;width:100px;}
+.hall .r .p {border-top:1px dotted black}
+.hall .o {position:absolute}
+.hall .delete_with_series {background-image:url(../images/stripe.png) !important;}
+.hall .is_block {background-image:url(../images/grid.png) !important;}
+.hall .disabled {background:#C0C0C0}
+.color_free, .hall .c0 {background:#FFFFFF}
+.color_choice, .hall .c99 {background:#98EE9C}
+.color_buyoffline, .hall .c1 {background:#FFB2B2}
+.color_buyoffline_seriesnumber, .hall .c1_s {background:#fa0000;}
+.color_bookoffline, .hall .c2 {background:#82D1E9}
+.color_block, .hall .c3 {background:#C0C0C0}
+.color_timebook_short_offline, .hall .c8 {background:#FFFF99}
+.color_buyonline, .hall .c1_1 {background:#e094c6;}
+.color_buyonline_seriesnumber, .hall .c1_1_s {background:#ff005c;}
+.color_bookonline, .hall .c2_1 {background:#00c2fc}
+.color_timebook_long_online, .hall .c9_1 {background:#ff7a00;}
+.color_timebook_short_online, .hall .c8_1 {background:#ffff08}`;
+
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -1462,8 +1486,36 @@ export class AppComponent implements AfterViewInit {
     return `viewBox-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
-  private decorateHallMarkup(markup: string, _width: number, _height: number): string {
-    return markup;
+  private decorateHallMarkup(markup: string, width: number, height: number): string {
+    const hallFallbackStyles = `
+      <style>${DEFAULT_HALL_CSS}</style>
+      <style>
+        .hall {
+          position: relative !important;
+          display: block;
+          overflow: visible;
+          transform-origin: top left;
+          width: ${width}px;
+          height: ${height}px;
+        }
+
+        .hall,
+        .hall * {
+          box-sizing: border-box;
+          color: #000000 !important;
+        }
+
+        .hall [generated_object] {
+          display: block;
+        }
+
+        .hall svg {
+          overflow: visible;
+        }
+      </style>
+    `;
+
+    return `${hallFallbackStyles}${markup}`;
   }
 
   private extractHall(fragment: string): ExtractedHall | null {
