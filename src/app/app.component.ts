@@ -3,7 +3,7 @@ import { trigger, state, style, animate, transition } from '@angular/animations'
 import { SvgPath, SvgItem, Point, SvgPoint, SvgControlPoint, formatNumber } from '../lib/svg';
 import type { SvgCommandType, SvgCommandTypeAny } from '../lib/svg-command-types';
 import { MatIconRegistry } from '@angular/material/icon';
-import { DomSanitizer } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { StorageService } from './storage.service';
 import { CanvasComponent } from './canvas/canvas.component';
 import { Image } from './image';
@@ -19,6 +19,12 @@ export const kDefaultPath = `M 4 8 L 10 1 L 13 0 L 12 3 L 5 9 C 6 10 6 11 7 10 C
 + `A 5 5 0 0 0 4 10 Q 3.5 9.9 3.5 10.5 T 2 11.8 T 1.2 11 T 2.5 9.5 T 3 9 A 5 5 90 0 0 0 7 A 1.42 1.42 0 0 1 1 6 `
 + `C 1 5 2 6 3 6 C 2 7 3 7 4 8 M 10 1 L 10 3 L 12 3 L 10.2 2.8 L 10 1`;
 
+type ExtractedHall = {
+  outerHtml: string;
+  width: number;
+  height: number;
+};
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -28,9 +34,9 @@ export const kDefaultPath = `M 4 8 L 10 1 L 13 0 L 12 3 L 5 9 C 6 10 6 11 7 10 C
       transition(':enter', [])
     ]),
     trigger('leftColumn', [
-      state('*', style({'max-width': '310px'})),
-      transition(':enter', [style({'max-width': '0'}), animate('100ms ease')]),
-      transition(':leave', [animate('100ms ease', style({'max-width': '0'}))])
+      state('*', style({ 'max-width': '310px' })),
+      transition(':enter', [style({ 'max-width': '0' }), animate('100ms ease')]),
+      transition(':leave', [animate('100ms ease', style({ 'max-width': '0' }))])
     ])
   ]
 })
@@ -73,12 +79,19 @@ export class AppComponent implements AfterViewInit {
   wasCanvasDragged = false;
   draggedIsNew = false;
   dragging = false;
-	cursorPosition?: Point & {decimals?: number};
-	hoverPosition?: Point;
+  cursorPosition?: Point & { decimals?: number };
+  hoverPosition?: Point;
 
   // Images
   images: Image[] = [];
   focusedImage: Image | null = null;
+
+  // Hall workspace
+  hallFragment = this.storage.getHallHtml();
+  hallHtml: SafeHtml | null = null;
+  hallWidth = 0;
+  hallHeight = 0;
+  hallError = '';
 
   // UI State
   isLeftPanelOpened = true;
@@ -92,14 +105,20 @@ export class AppComponent implements AfterViewInit {
 
   constructor(
     matRegistry: MatIconRegistry,
-    sanitizer: DomSanitizer,
+    private domSanitizer: DomSanitizer,
     public cfg: ConfigService,
     private storage: StorageService
   ) {
     for (const icon of ['delete', 'logo', 'more', 'github', 'zoom_in', 'zoom_out', 'zoom_fit', 'sponsor']) {
-      matRegistry.addSvgIcon(icon, sanitizer.bypassSecurityTrustResourceUrl(`./assets/${icon}.svg`));
+      matRegistry.addSvgIcon(icon, this.domSanitizer.bypassSecurityTrustResourceUrl(`./assets/${icon}.svg`));
     }
+
     this.parsedPath = new SvgPath('');
+
+    if (this.hallFragment) {
+      this.loadHallFragment(this.hallFragment, false);
+    }
+
     this.reloadPath(this.rawPath, true);
   }
 
@@ -117,9 +136,9 @@ export class AppComponent implements AfterViewInit {
         const key = $event.key.toUpperCase() as SvgCommandType;
         if (isLower) {
           // Item insertion
-          const lastItem = this.parsedPath.path.length ?  this.parsedPath.path[this.parsedPath.path.length - 1] : null;
+          const lastItem = this.parsedPath.path.length ? this.parsedPath.path[this.parsedPath.path.length - 1] : null;
           const prevItem = this.focusedItem || lastItem;
-          if(this.canInsertAfter(prevItem, key)) {
+          if (this.canInsertAfter(prevItem, key)) {
             this.insert(key, prevItem, false);
             $event.preventDefault();
           }
@@ -132,7 +151,7 @@ export class AppComponent implements AfterViewInit {
         if (this.dragging) {
           // If an element is being dragged, undo by reloading the current history entry
           this.reloadPath(this.history[this.historyCursor]);
-        } else if(this.canvas){
+        } else if (this.canvas) {
           // stopDrag will unselect selected item if any
           this.canvas.stopDrag();
         }
@@ -149,9 +168,31 @@ export class AppComponent implements AfterViewInit {
       }
     }
   }
+
   get decimals() {
-    return  this.cfg.snapToGrid ? 0 : this.cfg.decimalPrecision;
- }
+    return this.cfg.snapToGrid ? 0 : this.cfg.decimalPrecision;
+  }
+
+  get hasHall(): boolean {
+    return this.hallWidth > 0 && this.hallHeight > 0 && !!this.hallHtml;
+  }
+
+  get hallPanelInfo(): string {
+    return this.hasHall ? `${this.hallWidth}×${this.hallHeight}` : 'not loaded';
+  }
+
+  get hallWorkspaceStyle(): Record<string, string> {
+    if (!this.hasHall || this.strokeWidth === 0) {
+      return {};
+    }
+
+    return {
+      left: `${-this.cfg.viewPortX / this.strokeWidth}px`,
+      top: `${-this.cfg.viewPortY / this.strokeWidth}px`,
+      width: `${this.hallWidth / this.strokeWidth}px`,
+      height: `${this.hallHeight / this.strokeWidth}px`
+    };
+  }
 
   ngAfterViewInit() {
     setTimeout(() => {
@@ -162,9 +203,10 @@ export class AppComponent implements AfterViewInit {
   get rawPath(): string {
     return this._rawPath;
   }
+
   set rawPath(value: string) {
-      this._rawPath = value;
-      this.pushHistory();
+    this._rawPath = value;
+    this.pushHistory();
   }
 
   setIsDragging(dragging: boolean) {
@@ -175,13 +217,13 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
-	setCursorPosition(position?: Point & {decimals?: number}) {
-		this.cursorPosition = position;
-	}
+  setCursorPosition(position?: Point & { decimals?: number }) {
+    this.cursorPosition = position;
+  }
 
-	setHoverPosition(position?: Point) {
-		this.hoverPosition = position;
-	}
+  setHoverPosition(position?: Point) {
+    this.hoverPosition = position;
+  }
 
   setHistoryDisabled(value: boolean) {
     this.historyDisabled = value;
@@ -192,7 +234,7 @@ export class AppComponent implements AfterViewInit {
 
   pushHistory() {
     if (!this.historyDisabled && this.rawPath !== this.history[this.historyCursor]) {
-      this.historyCursor ++;
+      this.historyCursor++;
       this.history.splice(this.historyCursor, this.history.length - this.historyCursor, this.rawPath);
       this.storage.addPath(null, this.rawPath);
     }
@@ -205,7 +247,7 @@ export class AppComponent implements AfterViewInit {
   undo() {
     if (this.canUndo()) {
       this.historyDisabled = true;
-      this.historyCursor --;
+      this.historyCursor--;
       this.reloadPath(this.history[this.historyCursor]);
       this.historyDisabled = false;
     }
@@ -218,7 +260,7 @@ export class AppComponent implements AfterViewInit {
   redo() {
     if (this.canRedo()) {
       this.historyDisabled = true;
-      this.historyCursor ++;
+      this.historyCursor++;
       this.reloadPath(this.history[this.historyCursor]);
       this.historyDisabled = false;
     }
@@ -228,10 +270,10 @@ export class AppComponent implements AfterViewInit {
     if (!force && this.cfg.viewPortLocked) {
       return;
     }
-    if (w === null && h !==null) {
+    if (w === null && h !== null) {
       w = this.canvasWidth * h / this.canvasHeight;
     }
-    if (h === null && w !==null) {
+    if (h === null && w !== null) {
       h = this.canvasHeight * w / this.canvasWidth;
     }
     if (!w || !h) {
@@ -247,7 +289,7 @@ export class AppComponent implements AfterViewInit {
 
   insert(type: SvgCommandTypeAny, after: SvgItem | null, convert: boolean) {
     if (convert) {
-      if(after) {
+      if (after) {
         this.focusedItem =
           this.parsedPath.changeType(after, (after.relative ? type.toLowerCase() as SvgCommandTypeAny : type));
         this.afterModelChange();
@@ -270,32 +312,32 @@ export class AppComponent implements AfterViewInit {
 
       if (type.toLowerCase() !== 'm' || !newItem) {
         const relative = type.toLowerCase() === type;
-        const X = (relative ?  0 : point1.x).toString();
-        const Y = (relative ?  0 : point1.y).toString();
+        const X = (relative ? 0 : point1.x).toString();
+        const Y = (relative ? 0 : point1.y).toString();
         switch (type.toLocaleLowerCase()) {
           case 'm': case 'l': case 't':
-            newItem = SvgItem.Make([type, X, Y]) ; break;
+            newItem = SvgItem.Make([type, X, Y]); break;
           case 'h':
-            newItem = SvgItem.Make([type, X]) ; break;
+            newItem = SvgItem.Make([type, X]); break;
           case 'v':
-            newItem = SvgItem.Make([type, Y]) ; break;
+            newItem = SvgItem.Make([type, Y]); break;
           case 's': case 'q':
-            newItem = SvgItem.Make([type, X , Y, X, Y]) ; break;
+            newItem = SvgItem.Make([type, X, Y, X, Y]); break;
           case 'c':
-            newItem = SvgItem.Make([type, X , Y, X, Y, X, Y]) ; break;
+            newItem = SvgItem.Make([type, X, Y, X, Y, X, Y]); break;
           case 'a':
-            newItem = SvgItem.Make([type, '1' , '1', '0', '0', '0', X, Y]) ; break;
+            newItem = SvgItem.Make([type, '1', '1', '0', '0', '0', X, Y]); break;
           case 'z':
             newItem = SvgItem.Make([type]);
         }
-        if(newItem) {
+        if (newItem) {
           this.parsedPath.insert(newItem, after ?? undefined);
         }
       }
       this.setHistoryDisabled(true);
       this.afterModelChange();
 
-      if(newItem) {
+      if (newItem) {
         this.focusedItem = newItem;
         this.draggedPoint = newItem.targetLocation();
       }
@@ -306,6 +348,26 @@ export class AppComponent implements AfterViewInit {
     if (this.cfg.viewPortLocked) {
       return;
     }
+
+    if (this.hasHall) {
+      let w = this.hallWidth;
+      let h = this.hallHeight;
+
+      if (this.canvasWidth > 0 && this.canvasHeight > 0) {
+        const canvasRatio = this.canvasHeight / this.canvasWidth;
+        const hallRatio = h / w;
+
+        if (canvasRatio < hallRatio) {
+          w = h / canvasRatio;
+        } else {
+          h = canvasRatio * w;
+        }
+      }
+
+      this.updateViewPort(0, 0, w, h, true);
+      return;
+    }
+
     const bbox = browserComputePathBoundingBox(this.rawPath);
 
     const k = this.canvasHeight / this.canvasWidth;
@@ -362,7 +424,7 @@ export class AppComponent implements AfterViewInit {
       useReverse: true,
       useShorthands: true
     });
-    this.cfg.minifyOutput=true;
+    this.cfg.minifyOutput = true;
     this.afterModelChange();
   }
 
@@ -407,6 +469,7 @@ export class AppComponent implements AfterViewInit {
     const idx = this.parsedPath.path.indexOf(item);
     return idx > 0;
   }
+
   canInsertAfter(item: SvgItem | null, type: SvgCommandType): boolean {
     let previousType: SvgCommandType | null = null;
     if (item !== null) {
@@ -423,16 +486,17 @@ export class AppComponent implements AfterViewInit {
     if (previousType === 'Z') {
       return type !== 'Z' && type !== 'T' && type !== 'S';
     }
-    if (previousType === 'C' || previousType === 'S' ) {
+    if (previousType === 'C' || previousType === 'S') {
       return type !== 'T';
     }
-    if (previousType === 'Q' || previousType === 'T' ) {
+    if (previousType === 'Q' || previousType === 'T') {
       return type !== 'S';
     }
     return type !== 'T' && type !== 'S';
   }
+
   canConvert(item: SvgItem, to: SvgCommandType): boolean {
-    const idx = this.parsedPath.path.indexOf(item) ;
+    const idx = this.parsedPath.path.indexOf(item);
     if (idx === 0) {
       return false;
     }
@@ -441,6 +505,7 @@ export class AppComponent implements AfterViewInit {
     }
     return false;
   }
+
   canUseAsOrigin(item: SvgItem): boolean {
     return item.getType().toUpperCase() !== 'Z'
       && this.parsedPath.path.indexOf(item) > 1;
@@ -448,10 +513,10 @@ export class AppComponent implements AfterViewInit {
 
   hasSubPaths(): boolean {
     let moveCount = 0;
-    for(const command of this.parsedPath.path) {
-      if(command.getType(true) === 'M') {
-        moveCount ++;
-        if(moveCount == 2) {
+    for (const command of this.parsedPath.path) {
+      if (command.getType(true) === 'M') {
+        moveCount++;
+        if (moveCount === 2) {
           return true;
         }
       }
@@ -532,7 +597,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   cancelAddImage(): void {
-    if(this.images.length === 0) {
+    if (this.images.length === 0) {
       this.isEditingImages = false;
       this.focusedImage = null;
     }
@@ -548,9 +613,9 @@ export class AppComponent implements AfterViewInit {
   }
 
   focusItem(it: SvgItem | null): void {
-    if(it !== this.focusedItem) {
+    if (it !== this.focusedItem) {
       this.focusedItem = it;
-      if(this.focusedItem) {
+      if (this.focusedItem) {
         const idx = this.parsedPath.path.indexOf(this.focusedItem);
         document.getElementById(`svg_command_row_${idx}`)?.scrollIntoView({
           behavior: 'smooth',
@@ -558,5 +623,121 @@ export class AppComponent implements AfterViewInit {
         });
       }
     }
+  }
+
+  loadHallFragment(fragment: string, persist = true): void {
+    this.hallFragment = fragment;
+    this.hallError = '';
+
+    const hall = this.extractHall(fragment);
+    if (!hall) {
+      this.hallHtml = null;
+      this.hallWidth = 0;
+      this.hallHeight = 0;
+      this.hallError = 'div.hall не найден';
+      if (persist) {
+        this.storage.removeHallHtml();
+      }
+      return;
+    }
+
+    this.hallHtml = this.domSanitizer.bypassSecurityTrustHtml(hall.outerHtml);
+    this.hallWidth = hall.width;
+    this.hallHeight = hall.height;
+
+    this.updateViewPort(0, 0, hall.width, hall.height, true);
+
+    if (persist) {
+      this.storage.setHallHtml(fragment);
+    }
+
+    setTimeout(() => {
+      this.canvas?.refreshCanvasSize();
+      this.zoomAuto();
+    }, 0);
+  }
+
+  clearHall(): void {
+    this.hallFragment = '';
+    this.hallHtml = null;
+    this.hallWidth = 0;
+    this.hallHeight = 0;
+    this.hallError = '';
+    this.storage.removeHallHtml();
+
+    setTimeout(() => {
+      this.canvas?.refreshCanvasSize();
+    }, 0);
+  }
+
+  private extractHall(fragment: string): ExtractedHall | null {
+    if (!fragment.trim()) {
+      return null;
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(fragment, 'text/html');
+
+    const rootHall = Array.from(doc.body.children).find((node): node is HTMLElement => {
+      return node instanceof HTMLElement && node.classList.contains('hall');
+    });
+
+    const hall = rootHall || doc.body.querySelector('div.hall');
+
+    if (!(hall instanceof HTMLElement)) {
+      return null;
+    }
+
+    const width = this.readHallDimension(hall, 'width');
+    const height = this.readHallDimension(hall, 'height');
+
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+
+    return {
+      outerHtml: hall.outerHTML,
+      width,
+      height
+    };
+  }
+
+  private readHallDimension(hall: HTMLElement, dimension: 'width' | 'height'): number {
+    const directStyleValue = hall.style[dimension];
+    const directParsed = this.parsePixelValue(directStyleValue);
+    if (directParsed > 0) {
+      return directParsed;
+    }
+
+    const styleAttr = hall.getAttribute('style') || '';
+    const regex = new RegExp(`${dimension}\\s*:\\s*([\\d.]+)px`, 'i');
+    const matched = styleAttr.match(regex);
+    if (matched) {
+      return parseFloat(matched[1]);
+    }
+
+    const attrValue = hall.getAttribute(dimension);
+    if (attrValue) {
+      const attrParsed = this.parsePixelValue(attrValue);
+      if (attrParsed > 0) {
+        return attrParsed;
+      }
+    }
+
+    return 0;
+  }
+
+  private parsePixelValue(value: string | null | undefined): number {
+    if (!value) {
+      return 0;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (normalized.endsWith('px')) {
+      return parseFloat(normalized.slice(0, -2));
+    }
+
+    const numeric = parseFloat(normalized);
+    return Number.isFinite(numeric) ? numeric : 0;
   }
 }

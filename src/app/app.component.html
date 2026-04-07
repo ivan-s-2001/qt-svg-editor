@@ -55,6 +55,47 @@
                 </div>
             </app-expandable>
 
+            <app-expandable panelTitle="Hall HTML" [panelInfo]="hallPanelInfo" [opened]="true">
+                <div class="row">
+                    <div class="input-block" style="flex-grow:1">
+                        <label>HTML Fragment</label>
+                        <textarea
+                            [(ngModel)]="hallFragment"
+                            class="app-input"
+                            style="height:160px;"
+                            placeholder="Paste HTML fragment containing div.hall"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="row hall-actions">
+                    <button
+                        mat-flat-button
+                        color="primary"
+                        class="mat-flat-button"
+                        (click)="loadHallFragment(hallFragment)"
+                    >
+                        Apply hall
+                    </button>
+
+                    <button
+                        mat-flat-button
+                        class="mat-flat-button"
+                        (click)="clearHall()"
+                    >
+                        Clear hall
+                    </button>
+                </div>
+
+                <div class="row hall-meta" *ngIf="hasHall">
+                    Рабочая зона: {{hallWidth}} × {{hallHeight}}, начало координат: 0,0
+                </div>
+
+                <div class="row hall-error" *ngIf="hallError">
+                    {{hallError}}
+                </div>
+            </app-expandable>
+
             <app-expandable panelTitle="Configuration" [opened]="true">
                 <div class="row">
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
@@ -439,6 +480,14 @@
             >
                 <mat-icon svgIcon="zoom_out"></mat-icon>
             </button>
+        </div>
+
+        <div
+            *ngIf="hasHall && hallHtml"
+            class="hall-workspace-layer"
+            [ngStyle]="hallWorkspaceStyle"
+        >
+            <div class="hall-workspace-content" [innerHTML]="hallHtml"></div>
         </div>
 
         <svg
