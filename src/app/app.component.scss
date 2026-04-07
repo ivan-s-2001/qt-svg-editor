@@ -93,6 +93,19 @@ textarea {
     scrollbar-width: thin;
 }
 
+
+input.app-input[type='number'],
+input.svg-value[type='number'] {
+    appearance: auto;
+}
+
+input.app-input[type='number']::-webkit-outer-spin-button,
+input.app-input[type='number']::-webkit-inner-spin-button,
+input.svg-value[type='number']::-webkit-outer-spin-button,
+input.svg-value[type='number']::-webkit-inner-spin-button {
+    opacity: 1;
+}
+
 input.svg-value {
     width: 38px;
     text-align: center;
@@ -153,6 +166,10 @@ textarea {
 .path-operations-grid4 {
     display: grid;
     grid-template-columns: 2fr 2fr 2fr 3fr;
+}
+
+.path-fit-row {
+    display: flex;
 }
 
 .hall-actions,

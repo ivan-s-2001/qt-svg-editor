@@ -42,19 +42,19 @@
                 <div class="viewbox-form">
                     <div class="input-block">
                         <label>X</label>
-                        <input class="app-input" appFormatter [(numberValue)]="newViewBox.x">
+                        <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="newViewBox.x">
                     </div>
                     <div class="input-block">
                         <label>Y</label>
-                        <input class="app-input" appFormatter [(numberValue)]="newViewBox.y">
+                        <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="newViewBox.y">
                     </div>
                     <div class="input-block">
                         <label>Width</label>
-                        <input class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.width">
+                        <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.width">
                     </div>
                     <div class="input-block">
                         <label>Height</label>
-                        <input class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.height">
+                        <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.height">
                     </div>
                 </div>
 
@@ -130,6 +130,8 @@
                         <div class="input-block">
                             <label>X</label>
                             <input
+                                type="number"
+                                step="1"
                                 class="app-input"
                                 appFormatter
                                 [numberValue]="activeViewBox.x"
@@ -139,6 +141,8 @@
                         <div class="input-block">
                             <label>Y</label>
                             <input
+                                type="number"
+                                step="1"
                                 class="app-input"
                                 appFormatter
                                 [numberValue]="activeViewBox.y"
@@ -148,6 +152,9 @@
                         <div class="input-block">
                             <label>Width</label>
                             <input
+                                type="number"
+                                step="1"
+                                min="1"
                                 class="app-input"
                                 appFormatter
                                 formatterType="positive-integer"
@@ -158,6 +165,9 @@
                         <div class="input-block">
                             <label>Height</label>
                             <input
+                                type="number"
+                                step="1"
+                                min="1"
                                 class="app-input"
                                 appFormatter
                                 formatterType="positive-integer"
@@ -252,19 +262,19 @@
                 <div class="row">
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
                         <label>X</label>
-                        <input class="app-input" appFormatter [numberValue]="cfg.viewPortX" (numberValueChange)="updateViewPort($event, cfg.viewPortY, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
+                        <input type="number" step="1" class="app-input" appFormatter [numberValue]="cfg.viewPortX" (numberValueChange)="updateViewPort($event, cfg.viewPortY, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
                     </div>
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
                         <label>Y</label>
-                        <input class="app-input" appFormatter [numberValue]="cfg.viewPortY" (numberValueChange)="updateViewPort(cfg.viewPortX, $event, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
+                        <input type="number" step="1" class="app-input" appFormatter [numberValue]="cfg.viewPortY" (numberValueChange)="updateViewPort(cfg.viewPortX, $event, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
                     </div>
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
                         <label>Width</label>
-                        <input class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortWidth" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, $event, null)" [disabled]="cfg.viewPortLocked">
+                        <input type="number" step="any" min="0.0001" class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortWidth" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, $event, null)" [disabled]="cfg.viewPortLocked">
                     </div>
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
                         <label>Height</label>
-                        <input class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortHeight" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, null, $event)" [disabled]="cfg.viewPortLocked">
+                        <input type="number" step="any" min="0.0001" class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortHeight" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, null, $event)" [disabled]="cfg.viewPortLocked">
                     </div>
 
                     <button mat-flat-button (click)="cfg.viewPortLocked = !cfg.viewPortLocked" [matTooltip]="cfg.viewPortLocked ? 'Unlock viewBox' : 'Lock viewBox'" matTooltipPosition="right" class="mat-flat-button">
@@ -276,14 +286,14 @@
                     <mat-checkbox [(ngModel)]="cfg.snapToGrid" style="flex:1">Snap to Grid</mat-checkbox>
                     <div class="input-block" style="flex:1" matTooltip="Number of decimals to keep when a point is dragged" matTooltipPosition="right" [matTooltipDisabled]="cfg.snapToGrid" [ngClass]="{'disabled': cfg.snapToGrid }">
                         <label>Point Precision</label>
-                        <input class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.decimalPrecision" [disabled]="cfg.snapToGrid">
+                        <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.decimalPrecision" [disabled]="cfg.snapToGrid">
                     </div>
                 </div>
                 <div class="row">
                     <mat-checkbox [(ngModel)]="cfg.showTicks" style="flex:1">Show Ticks</mat-checkbox>
                     <div class="input-block" style="flex:1" [ngClass]="{'disabled': !cfg.showTicks }">
                         <label>Interval</label>
-                        <input class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.tickInterval" [disabled]="!cfg.showTicks">
+                        <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.tickInterval" [disabled]="!cfg.showTicks">
                     </div>
                 </div>
                 <div class="row">
@@ -299,11 +309,11 @@
                     <div class="row path-operations-grid">
                         <div class="input-block" style="flex:1">
                             <label>Scale X</label>
-                            <input appFormatter [(numberValue)]="scaleX" class="app-input" >
+                            <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="scaleX">
                         </div>
                         <div class="input-block" style="flex:1">
                             <label>Scale Y</label>
-                            <input appFormatter [(numberValue)]="scaleY" class="app-input">
+                            <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="scaleY">
                         </div>
                         <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Scale the active viewBox and its patch together" matTooltipPosition="right" class="mat-flat-button">Scale</button>
                     </div>
@@ -311,11 +321,11 @@
                     <div class="row path-operations-grid">
                         <div class="input-block" style="flex:1">
                             <label>Translate X</label>
-                            <input appFormatter [(numberValue)]="translateX" class="app-input" step="1">
+                            <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateX">
                         </div>
                         <div class="input-block" style="flex:1">
                             <label>Translate Y</label>
-                            <input appFormatter [(numberValue)]="translateY" class="app-input" step="1">
+                            <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateY">
                         </div>
                         <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Move the active viewBox across the hall workspace" matTooltipPosition="right" class="mat-flat-button">Translate</button>
                     </div>
@@ -323,15 +333,15 @@
                     <div class="row path-operations-grid4">
                         <div class="input-block" style="flex:1">
                             <label>Center X</label>
-                            <input appFormatter [numberValue]="activeViewBoxCenterX" class="app-input" disabled>
+                            <input type="number" step="any" class="app-input" appFormatter [numberValue]="activeViewBoxCenterX" disabled>
                         </div>
                         <div class="input-block" style="flex:1">
                             <label>Center Y</label>
-                            <input appFormatter [numberValue]="activeViewBoxCenterY" class="app-input" disabled>
+                            <input type="number" step="any" class="app-input" appFormatter [numberValue]="activeViewBoxCenterY" disabled>
                         </div>
                         <div class="input-block" style="flex:1">
-                            <label>Angle</label>
-                            <input appFormatter suffix="°" [(numberValue)]="rotateAngle" class="app-input">
+                            <label>Angle (°)</label>
+                            <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="rotateAngle">
                         </div>
                         <button mat-flat-button (click)="rotate(rotateAngle)" style="flex:1" matTooltip="Rotate the active patch around the current viewBox center and fit the container to the result" matTooltipPosition="right" class="mat-flat-button">Rotate</button>
                     </div>
@@ -339,18 +349,20 @@
                     <div class="row path-operations-grid">
                         <div class="input-block" style="grid-column: span 2;">
                             <label>Number of decimals</label>
-                            <input appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals" class="app-input">
+                            <input type="number" step="1" min="0" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals">
                         </div>
                         <button mat-flat-button (click)="roundValues(roundValuesDecimals)" style="flex:1" matTooltip="Round all values, input the number of decimals to keep" matTooltipPosition="right" class="mat-flat-button">Round</button>
                     </div>
 
-                    <div class="row">
-                        <button mat-flat-button (click)="setRelative(true)" matTooltip="Convert all commands to relative" style="flex:1" class="mat-flat-button">Convert to relative</button>
-                        <button mat-flat-button (click)="setRelative(false)" matTooltip="Convert all commands to absolute" style="flex:1" class="mat-flat-button">Convert to absolute</button>
-                    </div>
-                    <div class="row">
-                        <button mat-flat-button (click)="reverse()" matTooltip="Reverse path commands" style="flex:1" class="mat-flat-button">Reverse</button>
-                        <button mat-flat-button (click)="optimize()" matTooltip="Optimize the path by removing useless components, changing types and reordering" style="flex:1" class="mat-flat-button">Optimize</button>
+                    <div class="row path-fit-row">
+                        <button
+                            mat-flat-button
+                            (click)="fitViewBoxToPatch()"
+                            style="flex:1"
+                            matTooltip="Resize the active viewBox to the current patch bounding box, with local path shift when needed"
+                            matTooltipPosition="right"
+                            class="mat-flat-button"
+                        >Подобрать viewBox по размеру patch</button>
                     </div>
                 </ng-container>
 
@@ -374,7 +386,7 @@
                         <div class="type-token" [ngClass]="{'type-token-relative':item.relative}" style="user-select: none;-webkit-user-select: none;" (click)="item.setRelative(!item.relative); afterModelChange();">{{item.getType()}}</div>
                         <ng-container *ngFor="let value of item.values; let i = index; trackBy:trackByIndex">
                             <mat-checkbox *ngIf="item.getType().toLowerCase()==='a' && (i===3 || i===4)" [ngModel]="value" (ngModelChange)="setValue(item,i,$event?1:0);" (focus)="focusedItem=item" class="small-checkbox" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)"></mat-checkbox>
-                            <input *ngIf="!(item.getType().toLowerCase()==='a' && (i===3 || i===4))" type="text" appKeyboardNavigable keyboardNavigableIdPrefix="svg_command" appFormatter [numberValue]="value" (numberValueChange)="setValue(item,i,$event);" class="svg-value app-input" id="svg_command_{{j}}_{{item.getType().toLowerCase()==='a' && i>4 ? i-1 : i}}" (focus)="focusedItem=item" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)">
+                            <input *ngIf="!(item.getType().toLowerCase()==='a' && (i===3 || i===4))" type="number" step="any" appKeyboardNavigable keyboardNavigableIdPrefix="svg_command" appFormatter [numberValue]="value" (numberValueChange)="setValue(item,i,$event);" class="svg-value app-input" id="svg_command_{{j}}_{{item.getType().toLowerCase()==='a' && i>4 ? i-1 : i}}" (focus)="focusedItem=item" matTooltipClass="app-tooltip" [matTooltip]="getTooltip(item, i)">
                         </ng-container>
 
                         <div style="flex:1"></div>
@@ -555,6 +567,8 @@
                         <svg
                             *ngIf="viewBox.patch.rawPath && viewBox.id !== activeViewBoxId"
                             class="viewbox-frame-preview"
+                            [attr.viewBox]="'0 0 ' + viewBox.width + ' ' + viewBox.height"
+                            preserveAspectRatio="xMinYMin meet"
                         >
                             <path [attr.d]="viewBox.patch.rawPath"></path>
                         </svg>

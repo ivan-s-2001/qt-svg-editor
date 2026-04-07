@@ -662,6 +662,38 @@ export class AppComponent implements AfterViewInit {
     this.afterModelChange();
   }
 
+  fitViewBoxToPatch() {
+    const viewBox = this.activeViewBox;
+    if (!viewBox || this.parsedPath.path.length === 0) {
+      return;
+    }
+
+    const bbox = this.getParsedPathBoundingBox();
+    if (!bbox) {
+      return;
+    }
+
+    const shiftX = -bbox.x;
+    const shiftY = -bbox.y;
+
+    if (shiftX !== 0 || shiftY !== 0) {
+      this.parsedPath.translate(shiftX, shiftY);
+    }
+
+    viewBox.width = this.normalizeViewBoxSize(Math.ceil(bbox.width));
+    viewBox.height = this.normalizeViewBoxSize(Math.ceil(bbox.height));
+    viewBox.patch.localViewPort = {
+      x: 0,
+      y: 0,
+      width: viewBox.width,
+      height: viewBox.height
+    };
+
+    this.viewBoxes = [...this.viewBoxes];
+    this.afterModelChange();
+    this.pushHistory();
+  }
+
   setRelative(rel: boolean) {
     if (!this.activeViewBox) {
       return;
