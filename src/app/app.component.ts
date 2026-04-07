@@ -41,22 +41,18 @@ type ExtractedHall = {
   ]
 })
 export class AppComponent implements AfterViewInit {
-  // SvgPath path data model:
   parsedPath: SvgPath;
   targetPoints: SvgPoint[] = [];
   controlPoints: SvgControlPoint[] = [];
 
-  // Raw path:
   _rawPath = this.storage.getPath()?.path || kDefaultPath;
   pathName = '';
   invalidSyntax = false;
 
-  // Undo/redo
   history: string[] = [];
   historyCursor = -1;
   historyDisabled = false;
 
-  //  Path operations panel inputs:
   scaleX = 1;
   scaleY = 1;
   translateX = 0;
@@ -66,13 +62,11 @@ export class AppComponent implements AfterViewInit {
   rotateAngle = 0;
   roundValuesDecimals = 1;
 
-  // Canvas Data:
   @ViewChild(CanvasComponent) canvas?: CanvasComponent;
   canvasWidth = 100;
   canvasHeight = 100;
   strokeWidth = 1;
 
-  // Dragged & hovered elements
   draggedPoint: SvgPoint | null = null;
   focusedItem: SvgItem | null = null;
   hoveredItem: SvgItem | null = null;
@@ -82,23 +76,19 @@ export class AppComponent implements AfterViewInit {
   cursorPosition?: Point & { decimals?: number };
   hoverPosition?: Point;
 
-  // Images
   images: Image[] = [];
   focusedImage: Image | null = null;
 
-  // Hall workspace
   hallFragment = this.storage.getHallHtml();
   hallHtml: SafeHtml | null = null;
   hallWidth = 0;
   hallHeight = 0;
   hallError = '';
 
-  // UI State
   isLeftPanelOpened = true;
   isContextualMenuOpened = false;
   isEditingImages = false;
 
-  // Utility functions:
   max = Math.max;
   trackByIndex = (idx: number, _: unknown) => idx;
   formatNumber = (v: number) => formatNumber(v, 4);
@@ -135,7 +125,6 @@ export class AppComponent implements AfterViewInit {
         const isLower = $event.key === $event.key.toLowerCase();
         const key = $event.key.toUpperCase() as SvgCommandType;
         if (isLower) {
-          // Item insertion
           const lastItem = this.parsedPath.path.length ? this.parsedPath.path[this.parsedPath.path.length - 1] : null;
           const prevItem = this.focusedItem || lastItem;
           if (this.canInsertAfter(prevItem, key)) {
@@ -143,16 +132,13 @@ export class AppComponent implements AfterViewInit {
             $event.preventDefault();
           }
         } else if (!isLower && this.focusedItem && this.canConvert(this.focusedItem, key)) {
-          // Item conversion
           this.insert(key, this.focusedItem, true);
           $event.preventDefault();
         }
       } else if (!$event.metaKey && !$event.ctrlKey && $event.key === KEYBOARD.KEYS.ESCAPE) {
         if (this.dragging) {
-          // If an element is being dragged, undo by reloading the current history entry
           this.reloadPath(this.history[this.historyCursor]);
         } else if (this.canvas) {
-          // stopDrag will unselect selected item if any
           this.canvas.stopDrag();
         }
         $event.preventDefault();
@@ -277,8 +263,7 @@ export class AppComponent implements AfterViewInit {
   insert(type: SvgCommandTypeAny, after: SvgItem | null, convert: boolean) {
     if (convert) {
       if (after) {
-        this.focusedItem =
-          this.parsedPath.changeType(after, (after.relative ? type.toLowerCase() as SvgCommandTypeAny : type));
+        this.focusedItem = this.parsedPath.changeType(after, (after.relative ? type.toLowerCase() as SvgCommandTypeAny : type));
         this.afterModelChange();
       }
     } else {
@@ -356,7 +341,6 @@ export class AppComponent implements AfterViewInit {
     }
 
     const bbox = browserComputePathBoundingBox(this.rawPath);
-
     const k = this.canvasHeight / this.canvasWidth;
     let w = bbox.width + 2;
     let h = bbox.height + 2;
@@ -366,12 +350,7 @@ export class AppComponent implements AfterViewInit {
       h = k * w;
     }
 
-    this.updateViewPort(
-      bbox.x - 1,
-      bbox.y - 1,
-      w,
-      h
-    );
+    this.updateViewPort(bbox.x - 1, bbox.y - 1, w, h);
   }
 
   scale(x: number, y: number) {
@@ -494,8 +473,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   canUseAsOrigin(item: SvgItem): boolean {
-    return item.getType().toUpperCase() !== 'Z'
-      && this.parsedPath.path.indexOf(item) > 1;
+    return item.getType().toUpperCase() !== 'Z' && this.parsedPath.path.indexOf(item) > 1;
   }
 
   hasSubPaths(): boolean {
@@ -556,7 +534,7 @@ export class AppComponent implements AfterViewInit {
       if (autozoom) {
         this.zoomAuto();
       }
-    } catch (e) {
+    } catch {
       this.invalidSyntax = true;
       if (!this.parsedPath) {
         this.parsedPath = new SvgPath('');
@@ -604,10 +582,7 @@ export class AppComponent implements AfterViewInit {
       this.focusedItem = it;
       if (this.focusedItem) {
         const idx = this.parsedPath.path.indexOf(this.focusedItem);
-        document.getElementById(`svg_command_row_${idx}`)?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest'
-        });
+        document.getElementById(`svg_command_row_${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
   }
@@ -628,7 +603,7 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
-    this.hallHtml = this.domSanitizer.bypassSecurityTrustHtml(hall.outerHtml);
+    this.hallHtml = this.domSanitizer.bypassSecurityTrustHtml(this.decorateHallMarkup(hall.outerHtml));
     this.hallWidth = hall.width;
     this.hallHeight = hall.height;
 
@@ -657,6 +632,35 @@ export class AppComponent implements AfterViewInit {
     }, 0);
   }
 
+  private decorateHallMarkup(hallOuterHtml: string): string {
+    const hallFallbackStyles = `
+      <style>
+        .hall {
+          position: relative !important;
+          display: block;
+          overflow: visible;
+          transform-origin: top left;
+        }
+        .hall .o,
+        .hall > [style*="left:"][style*="top:"] {
+          position: absolute !important;
+          display: block;
+        }
+        .hall [generated_object] {
+          display: block;
+        }
+        .hall svg {
+          overflow: visible;
+        }
+        .hall, .hall * {
+          box-sizing: border-box;
+        }
+      </style>
+    `;
+
+    return `${hallFallbackStyles}${hallOuterHtml}`;
+  }
+
   private extractHall(fragment: string): ExtractedHall | null {
     if (!fragment.trim()) {
       return null;
@@ -682,11 +686,7 @@ export class AppComponent implements AfterViewInit {
       return null;
     }
 
-    return {
-      outerHtml: hall.outerHTML,
-      width,
-      height
-    };
+    return { outerHtml: hall.outerHTML, width, height };
   }
 
   private readHallDimension(hall: HTMLElement, dimension: 'width' | 'height'): number {

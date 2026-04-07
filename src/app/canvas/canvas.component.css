@@ -89,15 +89,10 @@ circle.dragged {
 text.tick {
     fill: #595959;
     text-anchor: end;
-    /* Prevent accidental selection of axis markers on drag */
     cursor: default;
     user-select: none;
 }
 
-
-
-
-/* images */
 image {
     pointer-events: none;
 }

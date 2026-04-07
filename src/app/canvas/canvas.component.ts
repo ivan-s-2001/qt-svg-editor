@@ -34,6 +34,15 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() parsedPath?: SvgPath;
   @Input() targetPoints: SvgPoint[] = [];
   @Input() controlPoints: SvgControlPoint[] = [];
+  @Input() hallHtml: SafeHtml | null = null;
+  @Input() hallWidth = 0;
+  @Input() hallHeight = 0;
+  @Input() hasHallBackground = false;
+
+  @HostBinding('class.has-hall-background')
+  get hasHallBackgroundClass(): boolean {
+    return this.hasHallBackground;
+  }
 
   @Input() decimals?: number;
   @Input() viewPortX = 0;
@@ -48,21 +57,12 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() draggedIsNew = false;
   @Input() images: Image[] = [];
   @Input() editImages = true;
-  @Input() hallHtml: SafeHtml | null = null;
-  @Input() hallWidth = 0;
-  @Input() hallHeight = 0;
-  @Input() hasHallBackground = false;
-
-  @HostBinding('class.has-hall-background')
-  get hasHallBackgroundClass(): boolean {
-    return this.hasHallBackground;
-  }
 
   @Output() afterModelChange = new EventEmitter<void>();
   @Output() dragging = new EventEmitter<boolean>();
   @Output() viewPort = new EventEmitter<{x: number, y: number, w: number, h: number | null, force?: boolean}>();
   @Output() hoverPosition = new EventEmitter<{x: number, y: number} | undefined>();
-	@Output() cursorPosition = new EventEmitter<Point & {decimals?: number} | undefined>();
+  @Output() cursorPosition = new EventEmitter<Point & {decimals?: number} | undefined>();
 
   @Output() emptyCanvas = new EventEmitter<void>();
 
@@ -95,7 +95,6 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   xGrid: number[] = [];
   yGrid: number[] = [];
 
-  // Utility functions
   min = Math.min;
   abs = Math.abs;
   trackByIndex = (idx: number, _: unknown) => idx;
@@ -116,20 +115,15 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     window.addEventListener('resize', () => {
       this.refreshCanvasSize(true);
     });
-
-    // Following line is a workaround for a bug in Safari preventing the Wheel events to be fired:
-    window.addEventListener('wheel', () => { /* */ });
+    window.addEventListener('wheel', () => { /* safari workaround */ });
   }
 
   ngOnInit(): void {
     const cap = (val:number, max:number) => val > max ? max : val < -max ? -max : val;
     const throttler = throttleTime(20, undefined, {leading: false, trailing: true});
     this.wheel$
-      .pipe( buffer(this.wheel$.pipe(throttler)) )
-      .pipe( map(ev => ({
-          event: ev[0],
-          deltaY: ev.reduce((acc, cur) => acc + cap(cur.deltaY, 50), 0)
-      })))
+      .pipe(buffer(this.wheel$.pipe(throttler)))
+      .pipe(map(ev => ({ event: ev[0], deltaY: ev.reduce((acc, cur) => acc + cap(cur.deltaY, 50), 0) })))
       .subscribe(this.mousewheel.bind(this));
   }
 
@@ -140,7 +134,7 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   @HostListener('mousemove', ['$event']) onMouseMove($event: MouseEvent) {
     this.drag($event);
   }
-  @HostListener('mouseup', ['$event'])  onMouseUp($event: MouseEvent) {
+  @HostListener('mouseup', ['$event'])  onMouseUp() {
     this.stopDrag();
   }
   @HostListener('touchstart', ['$event']) onTouchStart($event: TouchEvent) {
@@ -151,16 +145,15 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   @HostListener('touchmove', ['$event']) onTouchMove($event: TouchEvent) {
     this.drag($event);
   }
-  @HostListener('touchend', ['$event']) onTouchEnd($event: TouchEvent) {
+  @HostListener('touchend', ['$event']) onTouchEnd() {
     this.stopDrag();
   }
   @HostListener('wheel', ['$event']) onWheel($event: WheelEvent) {
     this.wheel$.next($event);
   }
-  @HostListener('click', ['$event']) onClick($event: MouseEvent) {
+  @HostListener('click', ['$event']) onClick() {
     this.hoveredItem = null;
   }
-
 
   refreshCanvasSize(emitEmptyCanvas = false) {
     const rect = this.canvas.nativeElement.parentNode.getBoundingClientRect();
@@ -170,13 +163,7 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     this.canvasWidth = rect.width;
     this.canvasHeight = rect.height;
 
-    this.viewPort.emit({
-      x: this.viewPortX,
-      y: this.viewPortY,
-      w: this.viewPortWidth,
-      h: null,
-      force: true
-    });
+    this.viewPort.emit({ x: this.viewPortX, y: this.viewPortY, w: this.viewPortWidth, h: null, force: true });
   }
 
   refreshGrid() {
@@ -198,22 +185,19 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   pinchToZoom(previousEvent: MouseEvent | TouchEvent, event: MouseEvent | TouchEvent) {
-    if ( window.TouchEvent
+    if (window.TouchEvent
       && previousEvent instanceof TouchEvent
       && event instanceof TouchEvent
       && previousEvent.touches.length >= 2
-      && event.touches.length >= 2)
-    {
+      && event.touches.length >= 2) {
       const pt = this.eventToLocation(event, 0);
       const pt2 = this.eventToLocation(event, 1);
       const oriPt = this.eventToLocation(previousEvent, 0);
       const oriPt2 = this.eventToLocation(previousEvent, 1);
-      const ptm = {x: 0.5 * (pt.x + pt2.x) , y: 0.5 * (pt.y + pt2.y)};
-      const oriPtm = {x: 0.5 * (oriPt.x + oriPt2.x) , y: 0.5 * (oriPt.y + oriPt2.y)};
-      const delta = {x: oriPtm.x - ptm.x , y: oriPtm.y - ptm.y};
-      const k =
-        Math.sqrt((oriPt.x - oriPt2.x) * (oriPt.x - oriPt2.x) + (oriPt.y - oriPt2.y) * (oriPt.y - oriPt2.y)) /
-        Math.sqrt((pt.x - pt2.x) * (pt.x - pt2.x) + (pt.y - pt2.y) * (pt.y - pt2.y));
+      const ptm = {x: 0.5 * (pt.x + pt2.x), y: 0.5 * (pt.y + pt2.y)};
+      const oriPtm = {x: 0.5 * (oriPt.x + oriPt2.x), y: 0.5 * (oriPt.y + oriPt2.y)};
+      const delta = {x: oriPtm.x - ptm.x, y: oriPtm.y - ptm.y};
+      const k = Math.sqrt((oriPt.x - oriPt2.x) ** 2 + (oriPt.y - oriPt2.y) ** 2) / Math.sqrt((pt.x - pt2.x) ** 2 + (pt.y - pt2.y) ** 2);
       return {zoom: k, delta, center: ptm};
     }
     return null;
@@ -222,11 +206,10 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   mousewheel(event: {event: WheelEvent, deltaY: number}) {
     const scale = Math.pow(1.005, event.deltaY);
     const pt = this.eventToLocation(event.event);
-
     this.zoomViewPort(scale, pt);
   }
 
-  zoomViewPort(scale: number,  pt?: {x: number, y: number}) {
+  zoomViewPort(scale: number, pt?: {x: number, y: number}) {
     if (!pt) {
       pt = {x: this.viewPortX + 0.5 * this.viewPortWidth, y: this.viewPortY + 0.5 * this.viewPortHeight};
     }
@@ -234,7 +217,6 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     const h = scale * this.viewPortHeight;
     const x = this.viewPortX + ((pt.x - this.viewPortX) - scale * (pt.x - this.viewPortX));
     const y = this.viewPortY + ((pt.y - this.viewPortY) - scale * (pt.y - this.viewPortY));
-
     this.viewPort.emit({x, y, w, h});
   }
 
@@ -242,10 +224,8 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     if (item !== this.draggedPoint) {
       this.dragWithoutClick = false;
     }
-
     this.dragging.emit(true);
     this.setCursorPosition({...item, decimals: this.decimals});
-
     if (item.itemReference.getType().toLowerCase() === 'z') {
       return;
     }
@@ -274,7 +254,6 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     this.dragging.emit(false);
 
     if (!this.draggedPoint && !this.wasCanvasDragged) {
-      // unselect action
       this.focusedItem = null;
       this.setCursorPosition(undefined);
     }
@@ -285,7 +264,6 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     this.draggedPoint = null;
     this.draggedEvt = null;
     this.dragWithoutClick = true;
-
     this.draggedImage = null;
   }
 
@@ -294,9 +272,7 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     this.hoverPosition.emit(pt);
 
     if (this.draggedPoint || this.draggedEvt || this.draggedImage) {
-
       if (!this.dragWithoutClick && event instanceof MouseEvent && event.buttons === 0) {
-        // Stop dragging if click is not maintained anymore.
         this.stopDrag();
         return;
       }
@@ -304,22 +280,11 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
       event.stopPropagation();
       if (this.draggedImage && this.draggedEvt) {
         const oriPt = this.eventToLocation(this.draggedEvt);
-        /* eslint-disable no-bitwise */
-        if (this.draggedImageType & 0b0001) {
-          this.draggedImage.x1 += (pt.x - oriPt.x);
-        }
-        if (this.draggedImageType & 0b0010) {
-          this.draggedImage.y1 += (pt.y - oriPt.y);
-        }
-        if (this.draggedImageType & 0b0100) {
-          this.draggedImage.x2 += (pt.x - oriPt.x);
-        }
-        if (this.draggedImageType & 0b1000) {
-          this.draggedImage.y2 += (pt.y - oriPt.y);
-        }
-        /* eslint-enable no-bitwise */
+        if (this.draggedImageType & 0b0001) this.draggedImage.x1 += (pt.x - oriPt.x);
+        if (this.draggedImageType & 0b0010) this.draggedImage.y1 += (pt.y - oriPt.y);
+        if (this.draggedImageType & 0b0100) this.draggedImage.x2 += (pt.x - oriPt.x);
+        if (this.draggedImageType & 0b1000) this.draggedImage.y2 += (pt.y - oriPt.y);
         this.draggedEvt = event;
-
       } else if (this.draggedPoint && this.parsedPath) {
         const decimals = event.ctrlKey ? (this.decimals ? 0 : 3) : this.decimals;
         pt.x = parseFloat(pt.x.toFixed(decimals));
@@ -334,30 +299,26 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
         this.afterModelChange.emit();
         this.draggedEvt = null;
         this.setCursorPosition({...pt, decimals});
-      } else if(this.draggedEvt) {
+      } else if (this.draggedEvt) {
         this.wasCanvasDragged = true;
         this.hoverPosition.emit(undefined);
-
-        const pinchToZoom = this.pinchToZoom(this.draggedEvt, event);
-        if (pinchToZoom !== null){
-          const w = pinchToZoom.zoom * this.viewPortWidth;
-          const h = pinchToZoom.zoom * this.viewPortHeight;
-          const x = this.viewPortX + pinchToZoom.delta.x + (pinchToZoom.center.x - this.viewPortX) * (1 - pinchToZoom.zoom);
-          const y = this.viewPortY + pinchToZoom.delta.y + (pinchToZoom.center.y - this.viewPortY) * (1 - pinchToZoom.zoom);
+        const pinch = this.pinchToZoom(this.draggedEvt, event);
+        if (pinch !== null) {
+          const w = pinch.zoom * this.viewPortWidth;
+          const h = pinch.zoom * this.viewPortHeight;
+          const x = this.viewPortX + pinch.delta.x + (pinch.center.x - this.viewPortX) * (1 - pinch.zoom);
+          const y = this.viewPortY + pinch.delta.y + (pinch.center.y - this.viewPortY) * (1 - pinch.zoom);
           this.viewPort.emit({x, y, w, h});
         } else {
           const oriPt = this.eventToLocation(this.draggedEvt);
-          this.viewPort.emit({
-            x: this.viewPortX + (oriPt.x - pt.x), y: this.viewPortY + (oriPt.y - pt.y),
-            w: this.viewPortWidth, h: this.viewPortHeight
-          });
+          this.viewPort.emit({ x: this.viewPortX + (oriPt.x - pt.x), y: this.viewPortY + (oriPt.y - pt.y), w: this.viewPortWidth, h: this.viewPortHeight });
         }
         this.draggedEvt = event;
       }
     }
   }
 
-	setCursorPosition(location?: {x: number, y: number, decimals?: number}) {
-		this.cursorPosition.emit(location);
-	}
+  setCursorPosition(location?: {x: number, y: number, decimals?: number}) {
+    this.cursorPosition.emit(location);
+  }
 }
