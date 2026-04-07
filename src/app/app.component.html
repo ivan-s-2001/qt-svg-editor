@@ -276,6 +276,28 @@
             <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;canvas?.zoomViewPort(10/9)" matTooltip="Zoom Out" matTooltipPosition="left"><mat-icon svgIcon="zoom_out"></mat-icon></button>
         </div>
 
+        <div
+            *ngIf="hallHtml && hallWidth > 0 && hallHeight > 0 && strokeWidth"
+            class="hall-workspace-viewport"
+        >
+            <div
+                class="hall-workspace-pan"
+                [style.transform]="'translate(' + hallLayerOffsetX + 'px, ' + hallLayerOffsetY + 'px)'"
+            >
+                <div
+                    class="hall-workspace-layer"
+                    [style.width.px]="hallWidth"
+                    [style.height.px]="hallHeight"
+                    [style.transform]="'scale(' + hallLayerScale + ')'"
+                >
+                    <div
+                        class="hall-workspace-content"
+                        [innerHTML]="hallHtml"
+                    ></div>
+                </div>
+            </div>
+        </div>
+
         <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -312,9 +334,6 @@
             [(focusedImage)]="focusedImage"
             (cursorPosition)="setCursorPosition($event)"
             (hoverPosition)="setHoverPosition($event)"
-            [hallHtml]="hallHtml"
-            [hallWidth]="hallWidth"
-            [hallHeight]="hallHeight"
             [hasHallBackground]="hasHall"
         ></svg>
     </div>

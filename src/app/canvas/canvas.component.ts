@@ -1,5 +1,4 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
-import { SafeHtml } from '@angular/platform-browser';
 import { Subject } from 'rxjs';
 import { buffer, map, throttleTime } from 'rxjs/operators';
 import { Image } from '../image';
@@ -34,9 +33,6 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() parsedPath?: SvgPath;
   @Input() targetPoints: SvgPoint[] = [];
   @Input() controlPoints: SvgControlPoint[] = [];
-  @Input() hallHtml: SafeHtml | null = null;
-  @Input() hallWidth = 0;
-  @Input() hallHeight = 0;
   @Input() hasHallBackground = false;
 
   @HostBinding('class.has-hall-background')

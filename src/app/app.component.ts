@@ -20,7 +20,7 @@ export const kDefaultPath = `M 4 8 L 10 1 L 13 0 L 12 3 L 5 9 C 6 10 6 11 7 10 C
 + `C 1 5 2 6 3 6 C 2 7 3 7 4 8 M 10 1 L 10 3 L 12 3 L 10.2 2.8 L 10 1`;
 
 type ExtractedHall = {
-  outerHtml: string;
+  markup: string;
   width: number;
   height: number;
 };
@@ -165,6 +165,18 @@ export class AppComponent implements AfterViewInit {
 
   get hallPanelInfo(): string {
     return this.hasHall ? `${this.hallWidth}×${this.hallHeight}` : 'not loaded';
+  }
+
+  get hallLayerScale(): number {
+    return this.strokeWidth > 0 ? 1 / this.strokeWidth : 1;
+  }
+
+  get hallLayerOffsetX(): number {
+    return this.strokeWidth > 0 ? -this.cfg.viewPortX / this.strokeWidth : 0;
+  }
+
+  get hallLayerOffsetY(): number {
+    return this.strokeWidth > 0 ? -this.cfg.viewPortY / this.strokeWidth : 0;
   }
 
   ngAfterViewInit() {
@@ -603,7 +615,7 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
-    this.hallHtml = this.domSanitizer.bypassSecurityTrustHtml(this.decorateHallMarkup(hall.outerHtml));
+    this.hallHtml = this.domSanitizer.bypassSecurityTrustHtml(this.decorateHallMarkup(hall.markup));
     this.hallWidth = hall.width;
     this.hallHeight = hall.height;
 
@@ -632,7 +644,7 @@ export class AppComponent implements AfterViewInit {
     }, 0);
   }
 
-  private decorateHallMarkup(hallOuterHtml: string): string {
+  private decorateHallMarkup(markup: string): string {
     const hallFallbackStyles = `
       <style>
         .hall {
@@ -641,24 +653,23 @@ export class AppComponent implements AfterViewInit {
           overflow: visible;
           transform-origin: top left;
         }
-        .hall .o,
-        .hall > [style*="left:"][style*="top:"] {
-          position: absolute !important;
-          display: block;
+
+        .hall,
+        .hall * {
+          box-sizing: border-box;
         }
+
         .hall [generated_object] {
           display: block;
         }
+
         .hall svg {
           overflow: visible;
-        }
-        .hall, .hall * {
-          box-sizing: border-box;
         }
       </style>
     `;
 
-    return `${hallFallbackStyles}${hallOuterHtml}`;
+    return `${hallFallbackStyles}${markup}`;
   }
 
   private extractHall(fragment: string): ExtractedHall | null {
@@ -686,7 +697,16 @@ export class AppComponent implements AfterViewInit {
       return null;
     }
 
-    return { outerHtml: hall.outerHTML, width, height };
+    const externalStyles = Array.from(doc.querySelectorAll('style'))
+      .filter((style) => !hall.contains(style))
+      .map((style) => style.outerHTML)
+      .join('\n');
+
+    return {
+      markup: `${externalStyles}${hall.outerHTML}`,
+      width,
+      height
+    };
   }
 
   private readHallDimension(hall: HTMLElement, dimension: 'width' | 'height'): number {
