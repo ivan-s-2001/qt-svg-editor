@@ -290,14 +290,10 @@
                     [style.height.px]="hallHeight"
                     [style.transform]="'scale(' + hallLayerScale + ')'"
                 >
-                    <iframe
-                        class="hall-workspace-frame"
-                        [attr.srcdoc]="hallHtml"
-                        sandbox="allow-same-origin"
-                        scrolling="no"
-                        tabindex="-1"
-                        aria-hidden="true"
-                    ></iframe>
+                    <div
+                        class="hall-workspace-content"
+                        [innerHTML]="hallHtml"
+                    ></div>
                 </div>
             </div>
         </div>

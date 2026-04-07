@@ -3,7 +3,7 @@ import { trigger, state, style, animate, transition } from '@angular/animations'
 import { SvgPath, SvgItem, Point, SvgPoint, SvgControlPoint, formatNumber } from '../lib/svg';
 import type { SvgCommandType, SvgCommandTypeAny } from '../lib/svg-command-types';
 import { MatIconRegistry } from '@angular/material/icon';
-import { DomSanitizer } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { StorageService } from './storage.service';
 import { CanvasComponent } from './canvas/canvas.component';
 import { Image } from './image';
@@ -104,7 +104,7 @@ export class AppComponent implements AfterViewInit {
   focusedImage: Image | null = null;
 
   hallFragment = this.storage.getHallHtml();
-  hallHtml = '';
+  hallHtml: SafeHtml | null = null;
   hallWidth = 0;
   hallHeight = 0;
   hallError = '';
@@ -629,7 +629,7 @@ export class AppComponent implements AfterViewInit {
 
     const hall = this.extractHall(fragment);
     if (!hall) {
-      this.hallHtml = '';
+      this.hallHtml = null;
       this.hallWidth = 0;
       this.hallHeight = 0;
       this.hallError = 'div.hall не найден';
@@ -639,7 +639,7 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
-    this.hallHtml = this.buildHallDocument(hall.markup, hall.width, hall.height);
+    this.hallHtml = this.domSanitizer.bypassSecurityTrustHtml(this.decorateHallMarkup(hall.markup, hall.width, hall.height));
     this.hallWidth = hall.width;
     this.hallHeight = hall.height;
 
@@ -657,7 +657,7 @@ export class AppComponent implements AfterViewInit {
 
   clearHall(): void {
     this.hallFragment = '';
-    this.hallHtml = '';
+    this.hallHtml = null;
     this.hallWidth = 0;
     this.hallHeight = 0;
     this.hallError = '';
@@ -668,38 +668,35 @@ export class AppComponent implements AfterViewInit {
     }, 0);
   }
 
-  private buildHallDocument(markup: string, width: number, height: number): string {
-    const frameStyles = `
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: ${width}px;
-        height: ${height}px;
-        background: transparent;
-        overflow: hidden;
-      }
+  private decorateHallMarkup(markup: string, width: number, height: number): string {
+    const hallFallbackStyles = `
+      <style>${DEFAULT_HALL_CSS}</style>
+      <style>
+        .hall {
+          position: relative !important;
+          display: block;
+          overflow: visible;
+          transform-origin: top left;
+          width: ${width}px;
+          height: ${height}px;
+        }
 
-      body {
-        position: relative;
-      }
+        .hall,
+        .hall * {
+          box-sizing: border-box;
+        }
 
-      body > .hall {
-        margin: 0;
-        width: ${width}px;
-        height: ${height}px;
-      }
+        .hall [generated_object] {
+          display: block;
+        }
+
+        .hall svg {
+          overflow: visible;
+        }
+      </style>
     `;
 
-    return `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <base href="${this.escapeHtmlAttribute(document.baseURI || window.location.href)}">
-    <style>${DEFAULT_HALL_CSS}</style>
-    <style>${frameStyles}</style>
-  </head>
-  <body>${markup}</body>
-</html>`;
+    return `${hallFallbackStyles}${markup}`;
   }
 
   private extractHall(fragment: string): ExtractedHall | null {
@@ -762,14 +759,6 @@ export class AppComponent implements AfterViewInit {
     }
 
     return 0;
-  }
-
-  private escapeHtmlAttribute(value: string): string {
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
   }
 
   private parsePixelValue(value: string | null | undefined): number {
