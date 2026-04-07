@@ -13,7 +13,6 @@ export class StoredPath {
 })
 export class StorageService {
   storedPaths: StoredPath[] = [];
-
   constructor() {
     this.load();
   }
@@ -24,6 +23,18 @@ export class StorageService {
 
   getPath(name: string | null = null): StoredPath | undefined {
     return this.storedPaths.find(it => it.name === name);
+  }
+
+  getHallHtml(): string {
+    return localStorage.getItem(STORAGE.HALL_HTML) || '';
+  }
+
+  setHallHtml(html: string): void {
+    localStorage.setItem(STORAGE.HALL_HTML, html);
+  }
+
+  removeHallHtml(): void {
+    localStorage.removeItem(STORAGE.HALL_HTML);
   }
 
   removePath(name: string) {
@@ -43,18 +54,6 @@ export class StorageService {
     this.save();
   }
 
-  getHallHtml(): string {
-    return localStorage.getItem(STORAGE.HALL_HTML_FRAGMENT) || '';
-  }
-
-  setHallHtml(fragment: string) {
-    localStorage.setItem(STORAGE.HALL_HTML_FRAGMENT, fragment);
-  }
-
-  removeHallHtml() {
-    localStorage.removeItem(STORAGE.HALL_HTML_FRAGMENT);
-  }
-
   isEmpty(): boolean {
     return this.storedPaths.filter(it => !!it.name).length === 0;
   }
@@ -63,7 +62,7 @@ export class StorageService {
     this.storedPaths = [];
     const stored = localStorage.getItem(STORAGE.STORED_PATHS);
     if (stored) {
-      const parsed = JSON.parse(stored) as { creationDate: string, changeDate: string, name: string, path: string }[];
+      const parsed = JSON.parse(stored) as {creationDate: string, changeDate: string, name: string, path: string}[];
       this.storedPaths = parsed.map(it => ({
         creationDate: new Date(it.creationDate),
         changeDate: new Date(it.changeDate),

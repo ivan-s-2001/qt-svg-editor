@@ -3,7 +3,7 @@ import { trigger, state, style, animate, transition } from '@angular/animations'
 import { SvgPath, SvgItem, Point, SvgPoint, SvgControlPoint, formatNumber } from '../lib/svg';
 import type { SvgCommandType, SvgCommandTypeAny } from '../lib/svg-command-types';
 import { MatIconRegistry } from '@angular/material/icon';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer } from '@angular/platform-browser';
 import { StorageService } from './storage.service';
 import { CanvasComponent } from './canvas/canvas.component';
 import { Image } from './image';
@@ -24,6 +24,30 @@ type ExtractedHall = {
   width: number;
   height: number;
 };
+
+
+const DEFAULT_HALL_CSS = `.hall {position:relative}
+.hall * {-webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}
+.hall .r {position:absolute;z-index:1;cursor:pointer;border:1px solid black;overflow:hidden;box-sizing:border-box;}
+.hall .r .n, .hall .r .p {text-align:center;font-size:10px;line-height:10px;color:#000000}
+.hall .r .n {border-bottom:1px dotted black;padding-bottom:1px;display:table-cell;vertical-align:bottom;width:100px;}
+.hall .r .p {border-top:1px dotted black}
+.hall .o {position:absolute}
+.hall .delete_with_series {background-image:url(../images/stripe.png) !important;}
+.hall .is_block {background-image:url(../images/grid.png) !important;}
+.hall .disabled {background:#C0C0C0}
+.color_free, .hall .c0 {background:#FFFFFF}
+.color_choice, .hall .c99 {background:#98EE9C}
+.color_buyoffline, .hall .c1 {background:#FFB2B2}
+.color_buyoffline_seriesnumber, .hall .c1_s {background:#fa0000;}
+.color_bookoffline, .hall .c2 {background:#82D1E9}
+.color_block, .hall .c3 {background:#C0C0C0}
+.color_timebook_short_offline, .hall .c8 {background:#FFFF99}
+.color_buyonline, .hall .c1_1 {background:#e094c6;}
+.color_buyonline_seriesnumber, .hall .c1_1_s {background:#ff005c;}
+.color_bookonline, .hall .c2_1 {background:#00c2fc}
+.color_timebook_long_online, .hall .c9_1 {background:#ff7a00;}
+.color_timebook_short_online, .hall .c8_1 {background:#ffff08}`;
 
 @Component({
   selector: 'app-root',
@@ -80,7 +104,7 @@ export class AppComponent implements AfterViewInit {
   focusedImage: Image | null = null;
 
   hallFragment = this.storage.getHallHtml();
-  hallHtml: SafeHtml | null = null;
+  hallHtml = '';
   hallWidth = 0;
   hallHeight = 0;
   hallError = '';
@@ -605,7 +629,7 @@ export class AppComponent implements AfterViewInit {
 
     const hall = this.extractHall(fragment);
     if (!hall) {
-      this.hallHtml = null;
+      this.hallHtml = '';
       this.hallWidth = 0;
       this.hallHeight = 0;
       this.hallError = 'div.hall не найден';
@@ -615,7 +639,7 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
-    this.hallHtml = this.domSanitizer.bypassSecurityTrustHtml(this.decorateHallMarkup(hall.markup));
+    this.hallHtml = this.buildHallDocument(hall.markup, hall.width, hall.height);
     this.hallWidth = hall.width;
     this.hallHeight = hall.height;
 
@@ -633,7 +657,7 @@ export class AppComponent implements AfterViewInit {
 
   clearHall(): void {
     this.hallFragment = '';
-    this.hallHtml = null;
+    this.hallHtml = '';
     this.hallWidth = 0;
     this.hallHeight = 0;
     this.hallError = '';
@@ -644,32 +668,38 @@ export class AppComponent implements AfterViewInit {
     }, 0);
   }
 
-  private decorateHallMarkup(markup: string): string {
-    const hallFallbackStyles = `
-      <style>
-        .hall {
-          position: relative !important;
-          display: block;
-          overflow: visible;
-          transform-origin: top left;
-        }
+  private buildHallDocument(markup: string, width: number, height: number): string {
+    const frameStyles = `
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: ${width}px;
+        height: ${height}px;
+        background: transparent;
+        overflow: hidden;
+      }
 
-        .hall,
-        .hall * {
-          box-sizing: border-box;
-        }
+      body {
+        position: relative;
+      }
 
-        .hall [generated_object] {
-          display: block;
-        }
-
-        .hall svg {
-          overflow: visible;
-        }
-      </style>
+      body > .hall {
+        margin: 0;
+        width: ${width}px;
+        height: ${height}px;
+      }
     `;
 
-    return `${hallFallbackStyles}${markup}`;
+    return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <base href="${this.escapeHtmlAttribute(document.baseURI || window.location.href)}">
+    <style>${DEFAULT_HALL_CSS}</style>
+    <style>${frameStyles}</style>
+  </head>
+  <body>${markup}</body>
+</html>`;
   }
 
   private extractHall(fragment: string): ExtractedHall | null {
@@ -697,13 +727,13 @@ export class AppComponent implements AfterViewInit {
       return null;
     }
 
-    const externalStyles = Array.from(doc.querySelectorAll('style'))
-      .filter((style) => !hall.contains(style))
-      .map((style) => style.outerHTML)
+    const externalAssets = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
+      .filter((node) => !hall.contains(node))
+      .map((node) => node.outerHTML)
       .join('\n');
 
     return {
-      markup: `${externalStyles}${hall.outerHTML}`,
+      markup: `${externalAssets}${hall.outerHTML}`,
       width,
       height
     };
@@ -732,6 +762,14 @@ export class AppComponent implements AfterViewInit {
     }
 
     return 0;
+  }
+
+  private escapeHtmlAttribute(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   private parsePixelValue(value: string | null | undefined): number {
