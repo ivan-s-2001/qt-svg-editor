@@ -32,12 +32,22 @@ type ViewBoxDraft = {
   height: number;
 };
 
+type ViewBoxHistoryEntry = {
+  rawPath: string;
+  viewBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+};
+
 type ViewBoxPatchContext = {
   rawPath: string;
   parsedPath: SvgPath;
   targetPoints: SvgPoint[];
   controlPoints: SvgControlPoint[];
-  history: string[];
+  history: ViewBoxHistoryEntry[];
   historyCursor: number;
   localViewPort: {
     x: number;
@@ -104,7 +114,7 @@ export class AppComponent implements AfterViewInit {
   pathName = '';
   invalidSyntax = false;
 
-  history: string[] = [];
+  history: ViewBoxHistoryEntry[] = [];
   historyCursor = -1;
   historyDisabled = false;
 
@@ -196,7 +206,7 @@ export class AppComponent implements AfterViewInit {
         }
       } else if (!$event.metaKey && !$event.ctrlKey && $event.key === KEYBOARD.KEYS.ESCAPE) {
         if (this.dragging) {
-          this.reloadPath(this.history[this.historyCursor]);
+          this.applyHistoryEntry(this.history[this.historyCursor]);
         } else if (this.canvas) {
           this.canvas.stopDrag();
         }
@@ -323,17 +333,26 @@ export class AppComponent implements AfterViewInit {
   }
 
   pushHistory() {
-    if (!this.historyDisabled && this.rawPath !== this.history[this.historyCursor]) {
-      this.historyCursor++;
-      this.history.splice(this.historyCursor, this.history.length - this.historyCursor, this.rawPath);
-      this.storage.addPath(null, this.rawPath);
+    if (this.historyDisabled) {
+      return;
+    }
 
-      const patch = this.getActivePatchContext();
-      if (patch) {
-        patch.history = this.history;
-        patch.historyCursor = this.historyCursor;
-        this.persistViewBoxes();
-      }
+    const nextEntry = this.createCurrentHistoryEntry();
+    const currentEntry = this.history[this.historyCursor];
+
+    if (currentEntry && this.areHistoryEntriesEqual(currentEntry, nextEntry)) {
+      return;
+    }
+
+    this.historyCursor++;
+    this.history.splice(this.historyCursor, this.history.length - this.historyCursor, nextEntry);
+    this.storage.addPath(null, nextEntry.rawPath);
+
+    const patch = this.getActivePatchContext();
+    if (patch) {
+      patch.history = this.history;
+      patch.historyCursor = this.historyCursor;
+      this.persistViewBoxes();
     }
   }
 
@@ -345,7 +364,7 @@ export class AppComponent implements AfterViewInit {
     if (this.canUndo()) {
       this.historyDisabled = true;
       this.historyCursor--;
-      this.reloadPath(this.history[this.historyCursor]);
+      this.applyHistoryEntry(this.history[this.historyCursor]);
       this.historyDisabled = false;
       this.syncActivePatchFromEditor();
     }
@@ -359,7 +378,7 @@ export class AppComponent implements AfterViewInit {
     if (this.canRedo()) {
       this.historyDisabled = true;
       this.historyCursor++;
-      this.reloadPath(this.history[this.historyCursor]);
+      this.applyHistoryEntry(this.history[this.historyCursor]);
       this.historyDisabled = false;
       this.syncActivePatchFromEditor();
     }
@@ -537,6 +556,9 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
+    const currentX = viewBox.x;
+    const currentY = viewBox.y;
+
     this.parsedPath.rotate(viewBox.width / 2, viewBox.height / 2, angle);
 
     const bbox = this.getParsedPathBoundingBox();
@@ -544,12 +566,25 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
-    this.parsedPath.translate(-bbox.x, -bbox.y);
+    const worldLeft = currentX + bbox.x;
+    const worldTop = currentY + bbox.y;
+    const worldRight = worldLeft + bbox.width;
+    const worldBottom = worldTop + bbox.height;
 
-    viewBox.x += bbox.x;
-    viewBox.y += bbox.y;
-    viewBox.width = Math.max(1, bbox.width);
-    viewBox.height = Math.max(1, bbox.height);
+    const nextX = Math.floor(worldLeft);
+    const nextY = Math.floor(worldTop);
+    const nextRight = Math.ceil(worldRight);
+    const nextBottom = Math.ceil(worldBottom);
+
+    const localOffsetX = worldLeft - nextX;
+    const localOffsetY = worldTop - nextY;
+
+    this.parsedPath.translate(-bbox.x + localOffsetX, -bbox.y + localOffsetY);
+
+    viewBox.x = nextX;
+    viewBox.y = nextY;
+    viewBox.width = Math.max(1, nextRight - nextX);
+    viewBox.height = Math.max(1, nextBottom - nextY);
 
     this.rotateAngle = 0;
     this.viewBoxes = [...this.viewBoxes];
@@ -839,18 +874,30 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
+    const normalizedValue = field === 'width' || field === 'height'
+      ? Math.max(1, value)
+      : value;
+
+    if (viewBox[field] === normalizedValue) {
+      return;
+    }
+
+    viewBox[field] = normalizedValue;
+
     if (field === 'width' || field === 'height') {
-      viewBox[field] = Math.max(1, value);
       viewBox.patch.localViewPort.width = viewBox.width;
       viewBox.patch.localViewPort.height = viewBox.height;
-    } else {
-      viewBox[field] = value;
     }
 
     this.viewBoxes = [...this.viewBoxes];
+
     if (this.activeViewBoxId === viewBoxId) {
       this.syncEditorFromViewBox(viewBox);
+      this.syncActivePatchFromEditor(false);
+      this.pushHistory();
+      return;
     }
+
     this.persistViewBoxes();
   }
 
@@ -993,6 +1040,60 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
+  private createCurrentHistoryEntry(): ViewBoxHistoryEntry {
+    return this.createHistoryEntry(this.rawPath, this.activeViewBox);
+  }
+
+  private createHistoryEntry(
+    rawPath: string,
+    viewBox: Pick<ViewBoxEntity, 'x' | 'y' | 'width' | 'height'> | null | undefined
+  ): ViewBoxHistoryEntry {
+    return {
+      rawPath,
+      viewBox: {
+        x: viewBox?.x ?? 0,
+        y: viewBox?.y ?? 0,
+        width: Math.max(1, viewBox?.width ?? 1),
+        height: Math.max(1, viewBox?.height ?? 1)
+      }
+    };
+  }
+
+  private applyHistoryEntry(entry: ViewBoxHistoryEntry | undefined): void {
+    if (!entry) {
+      return;
+    }
+
+    const activeViewBox = this.activeViewBox;
+    if (activeViewBox) {
+      activeViewBox.x = entry.viewBox.x;
+      activeViewBox.y = entry.viewBox.y;
+      activeViewBox.width = Math.max(1, entry.viewBox.width);
+      activeViewBox.height = Math.max(1, entry.viewBox.height);
+      activeViewBox.patch.localViewPort = {
+        x: 0,
+        y: 0,
+        width: activeViewBox.width,
+        height: activeViewBox.height
+      };
+      this.viewBoxes = [...this.viewBoxes];
+    }
+
+    this.reloadPath(entry.rawPath);
+  }
+
+  private areHistoryEntriesEqual(a: ViewBoxHistoryEntry | undefined, b: ViewBoxHistoryEntry): boolean {
+    if (!a) {
+      return false;
+    }
+
+    return a.rawPath === b.rawPath
+      && a.viewBox.x === b.viewBox.x
+      && a.viewBox.y === b.viewBox.y
+      && a.viewBox.width === b.viewBox.width
+      && a.viewBox.height === b.viewBox.height;
+  }
+
   private syncActivePatchFromEditor(persist = true): void {
     const activeViewBox = this.activeViewBox;
     if (!activeViewBox) {
@@ -1059,7 +1160,15 @@ export class AppComponent implements AfterViewInit {
       createdAt: viewBox.createdAt,
       patch: {
         rawPath: viewBox.patch.rawPath,
-        history: [...viewBox.patch.history],
+        history: viewBox.patch.history.map((entry) => ({
+          rawPath: entry.rawPath,
+          viewBox: {
+            x: entry.viewBox.x,
+            y: entry.viewBox.y,
+            width: entry.viewBox.width,
+            height: entry.viewBox.height
+          }
+        })),
         historyCursor: viewBox.patch.historyCursor,
         localViewPort: {
           x: 0,
@@ -1096,7 +1205,7 @@ export class AppComponent implements AfterViewInit {
     width: number,
     height: number,
     rawPath = '',
-    history: string[] = [],
+    history: ViewBoxHistoryEntry[] = [],
     historyCursor = -1
   ): ViewBoxPatchContext {
     let parsedPath = new SvgPath('');
@@ -1112,7 +1221,17 @@ export class AppComponent implements AfterViewInit {
       safeRawPath = '';
     }
 
-    const normalizedHistory = history.length > 0 ? [...history] : (safeRawPath ? [safeRawPath] : []);
+    const normalizedHistory = history.length > 0
+      ? history.map((entry) => ({
+          rawPath: entry.rawPath,
+          viewBox: {
+            x: entry.viewBox.x,
+            y: entry.viewBox.y,
+            width: Math.max(1, entry.viewBox.width),
+            height: Math.max(1, entry.viewBox.height)
+          }
+        }))
+      : (safeRawPath ? [this.createHistoryEntry(safeRawPath, { x: 0, y: 0, width, height })] : []);
     const normalizedCursor = normalizedHistory.length > 0
       ? Math.min(Math.max(historyCursor, 0), normalizedHistory.length - 1)
       : -1;

@@ -8,9 +8,19 @@ export class StoredPath {
   changeDate: Date = new Date();
 }
 
+export type StoredViewBoxHistoryEntry = {
+  rawPath: string;
+  viewBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+};
+
 export type StoredViewBoxPatch = {
   rawPath: string;
-  history: string[];
+  history: StoredViewBoxHistoryEntry[];
   historyCursor: number;
   localViewPort: {
     x: number;
@@ -31,7 +41,9 @@ export type StoredViewBox = {
 };
 
 type StoredViewBoxInput = Partial<Omit<StoredViewBox, 'patch'>> & {
-  patch?: Partial<StoredViewBoxPatch>;
+  patch?: Partial<Omit<StoredViewBoxPatch, 'history'>> & {
+    history?: Array<StoredViewBoxHistoryEntry | string>;
+  };
 };
 
 @Injectable({
@@ -149,20 +161,22 @@ function normalizeStoredViewBox(viewBox: StoredViewBoxInput | null | undefined, 
     return null;
   }
 
+  const x = normalizeNumber(viewBox.x);
+  const y = normalizeNumber(viewBox.y);
   const width = normalizePositiveNumber(viewBox.width, 1);
   const height = normalizePositiveNumber(viewBox.height, 1);
   const patch = viewBox.patch || {};
 
   return {
     id: typeof viewBox.id === 'string' && viewBox.id.trim() ? viewBox.id : `viewBox-${index + 1}`,
-    x: normalizeNumber(viewBox.x),
-    y: normalizeNumber(viewBox.y),
+    x,
+    y,
     width,
     height,
     createdAt: typeof viewBox.createdAt === 'string' && viewBox.createdAt ? viewBox.createdAt : new Date().toISOString(),
     patch: {
       rawPath: typeof patch.rawPath === 'string' ? patch.rawPath : '',
-      history: Array.isArray(patch.history) ? patch.history.filter((entry): entry is string => typeof entry === 'string') : [],
+      history: normalizeHistoryEntries(patch.history, x, y, width, height),
       historyCursor: normalizeInteger(patch.historyCursor, -1),
       localViewPort: {
         x: normalizeNumber(patch.localViewPort?.x),
@@ -170,6 +184,56 @@ function normalizeStoredViewBox(viewBox: StoredViewBoxInput | null | undefined, 
         width: normalizePositiveNumber(patch.localViewPort?.width, width),
         height: normalizePositiveNumber(patch.localViewPort?.height, height)
       }
+    }
+  };
+}
+
+function normalizeHistoryEntries(
+  history: Array<StoredViewBoxHistoryEntry | string> | undefined,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): StoredViewBoxHistoryEntry[] {
+  if (!Array.isArray(history)) {
+    return [];
+  }
+
+  return history
+    .map((entry) => normalizeHistoryEntry(entry, x, y, width, height))
+    .filter((entry): entry is StoredViewBoxHistoryEntry => entry !== null);
+}
+
+function normalizeHistoryEntry(
+  entry: StoredViewBoxHistoryEntry | string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): StoredViewBoxHistoryEntry | null {
+  if (typeof entry === 'string') {
+    return {
+      rawPath: entry,
+      viewBox: {
+        x,
+        y,
+        width,
+        height
+      }
+    };
+  }
+
+  if (!entry || typeof entry !== 'object' || typeof entry.rawPath !== 'string') {
+    return null;
+  }
+
+  return {
+    rawPath: entry.rawPath,
+    viewBox: {
+      x: normalizeNumber(entry.viewBox?.x, x),
+      y: normalizeNumber(entry.viewBox?.y, y),
+      width: normalizePositiveNumber(entry.viewBox?.width, width),
+      height: normalizePositiveNumber(entry.viewBox?.height, height)
     }
   };
 }
