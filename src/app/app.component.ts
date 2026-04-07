@@ -1,4 +1,5 @@
-import { Component, AfterViewInit, HostListener, ViewChild } from '@angular/core';
+import { Component, AfterViewInit, HostListener, Inject, ViewChild } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { trigger, state, style, animate, transition } from '@angular/animations';
 import { SvgPath, SvgItem, Point, SvgPoint, SvgControlPoint, formatNumber } from '../lib/svg';
 import type { SvgCommandType, SvgCommandTypeAny } from '../lib/svg-command-types';
@@ -78,28 +79,6 @@ type ViewBoxEntity = {
   patch: ViewBoxPatchContext;
 };
 
-const DEFAULT_HALL_CSS = `.hall {position:relative}
-.hall * {-webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}
-.hall .r {position:absolute;z-index:1;cursor:pointer;border:1px solid black;overflow:hidden;box-sizing:border-box;}
-.hall .r .n, .hall .r .p {text-align:center;font-size:10px;line-height:10px;color:#000000}
-.hall .r .n {border-bottom:1px dotted black;padding-bottom:1px;display:table-cell;vertical-align:bottom;width:100px;}
-.hall .r .p {border-top:1px dotted black}
-.hall .o {position:absolute}
-.hall .delete_with_series {background-image:url(../images/stripe.png) !important;}
-.hall .is_block {background-image:url(../images/grid.png) !important;}
-.hall .disabled {background:#C0C0C0}
-.color_free, .hall .c0 {background:#FFFFFF}
-.color_choice, .hall .c99 {background:#98EE9C}
-.color_buyoffline, .hall .c1 {background:#FFB2B2}
-.color_buyoffline_seriesnumber, .hall .c1_s {background:#fa0000;}
-.color_bookoffline, .hall .c2 {background:#82D1E9}
-.color_block, .hall .c3 {background:#C0C0C0}
-.color_timebook_short_offline, .hall .c8 {background:#FFFF99}
-.color_buyonline, .hall .c1_1 {background:#e094c6;}
-.color_buyonline_seriesnumber, .hall .c1_1_s {background:#ff005c;}
-.color_bookonline, .hall .c2_1 {background:#00c2fc}
-.color_timebook_long_online, .hall .c9_1 {background:#ff7a00;}
-.color_timebook_short_online, .hall .c8_1 {background:#ffff08}`;
 
 @Component({
   selector: 'app-root',
@@ -176,14 +155,19 @@ export class AppComponent implements AfterViewInit {
   constructor(
     matRegistry: MatIconRegistry,
     private domSanitizer: DomSanitizer,
+    @Inject(DOCUMENT) private document: Document,
     public cfg: ConfigService,
     private storage: StorageService
   ) {
-    for (const icon of ['delete', 'logo', 'more', 'github', 'zoom_in', 'zoom_out', 'zoom_fit', 'sponsor']) {
+    for (const icon of ['delete', 'logo', 'more', 'zoom_in', 'zoom_out', 'zoom_fit']) {
       matRegistry.addSvgIcon(icon, this.domSanitizer.bypassSecurityTrustResourceUrl(`./assets/${icon}.svg`));
     }
 
     this.parsedPath = new SvgPath('');
+    this.cfg.preview = false;
+    this.cfg.filled = false;
+    this.cfg.showTicks = false;
+    this.applyBranding();
 
     if (this.hallFragment) {
       this.loadHallFragment(this.hallFragment, false);
@@ -287,7 +271,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   get hallPanelInfo(): string {
-    return this.hasHall ? `${this.hallWidth}×${this.hallHeight}` : 'not loaded';
+    return this.hasHall ? `${this.hallWidth}×${this.hallHeight}` : 'не загружено';
   }
 
   get hallLayerScale(): number {
@@ -307,7 +291,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   get activeViewBoxPanelInfo(): string {
-    return this.activeViewBox ? this.activeViewBox.name : 'not selected';
+    return this.activeViewBox ? this.activeViewBox.name : 'не выбран';
   }
 
   get canCreateViewBox(): boolean {
@@ -1163,6 +1147,24 @@ export class AppComponent implements AfterViewInit {
     return trimmed || fallbackName;
   }
 
+  private applyBranding(): void {
+    this.document.title = 'Редактор patch/viewBox';
+    this.updateBrandLink('icon', './assets/favicon-32x32.png');
+    this.updateBrandLink('shortcut icon', './assets/favicon-32x32.png');
+    this.updateBrandLink('apple-touch-icon', './assets/apple-touch-icon.png');
+  }
+
+  private updateBrandLink(rel: string, href: string): void {
+    let link = this.document.head.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+    if (!link) {
+      link = this.document.createElement('link');
+      link.rel = rel;
+      this.document.head.appendChild(link);
+    }
+
+    link.href = href;
+  }
+
   private resolveInitialActiveViewBoxId(): string | null {
     const storedActiveViewBoxId = this.storage.getActiveViewBoxId();
     if (storedActiveViewBoxId && this.viewBoxes.some((viewBox) => viewBox.id === storedActiveViewBoxId)) {
@@ -1460,36 +1462,8 @@ export class AppComponent implements AfterViewInit {
     return `viewBox-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
-  private decorateHallMarkup(markup: string, width: number, height: number): string {
-    const hallFallbackStyles = `
-      <style>${DEFAULT_HALL_CSS}</style>
-      <style>
-        .hall {
-          position: relative !important;
-          display: block;
-          overflow: visible;
-          transform-origin: top left;
-          width: ${width}px;
-          height: ${height}px;
-        }
-
-        .hall,
-        .hall * {
-          box-sizing: border-box;
-          color: #000000 !important;
-        }
-
-        .hall [generated_object] {
-          display: block;
-        }
-
-        .hall svg {
-          overflow: visible;
-        }
-      </style>
-    `;
-
-    return `${hallFallbackStyles}${markup}`;
+  private decorateHallMarkup(markup: string, _width: number, _height: number): string {
+    return markup;
   }
 
   private extractHall(fragment: string): ExtractedHall | null {

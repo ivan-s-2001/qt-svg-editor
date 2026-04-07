@@ -6,26 +6,33 @@
             <mat-icon>arrow_left</mat-icon>
         </button>
         <div class="left-column" cdk-scrollable>
-            <app-expandable panelTitle="Hall HTML" [panelInfo]="hallPanelInfo" [opened]="true">
+            <div class="brand-header">
+                <mat-icon svgIcon="logo" class="brand-logo"></mat-icon>
+                <div class="brand-copy">
+                    <div class="brand-title">Редактор patch/viewBox</div>
+                    <div class="brand-subtitle">Подложка hall и независимые контейнеры</div>
+                </div>
+            </div>
+            <app-expandable panelTitle="HTML подложки hall" [panelInfo]="hallPanelInfo" [opened]="true">
                 <div class="row">
                     <div class="input-block" style="flex-grow:1">
-                        <label>HTML Fragment</label>
+                        <label>HTML-фрагмент</label>
                         <textarea
                             [(ngModel)]="hallFragment"
                             class="app-input"
                             style="height:160px;"
-                            placeholder="Paste HTML fragment containing div.hall"
+                            placeholder="Вставьте HTML-фрагмент с div.hall"
                         ></textarea>
                     </div>
                 </div>
 
                 <div class="row hall-actions">
                     <button mat-flat-button color="primary" class="mat-flat-button" (click)="loadHallFragment(hallFragment)">
-                        Apply hall
+                        Загрузить подложку
                     </button>
 
                     <button mat-flat-button class="mat-flat-button" (click)="clearHall()">
-                        Clear hall
+                        Очистить
                     </button>
                 </div>
 
@@ -38,7 +45,7 @@
                 </div>
             </app-expandable>
 
-            <app-expandable panelTitle="ViewBoxes" [panelInfo]="viewBoxPanelInfo" [opened]="true">
+            <app-expandable panelTitle="ViewBox-контейнеры" [panelInfo]="viewBoxPanelInfo" [opened]="true">
                 <div class="viewbox-form">
                     <div class="input-block">
                         <label>X</label>
@@ -49,22 +56,22 @@
                         <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="newViewBox.y">
                     </div>
                     <div class="input-block">
-                        <label>Width</label>
+                        <label>Ширина</label>
                         <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.width">
                     </div>
                     <div class="input-block">
-                        <label>Height</label>
+                        <label>Высота</label>
                         <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="newViewBox.height">
                     </div>
                 </div>
 
                 <div class="row viewbox-actions">
                     <button mat-flat-button color="primary" class="mat-flat-button" (click)="createViewBox()" [disabled]="!hasHall || !canCreateViewBox">
-                        Add viewBox
+                        Добавить viewBox
                     </button>
 
                     <div class="viewbox-hint" *ngIf="!hasHall">
-                        Load hall first to place viewBox containers on the workspace
+                        Сначала загрузите подложку, чтобы размещать viewBox на рабочей области
                     </div>
                 </div>
 
@@ -85,46 +92,46 @@
                                 <div class="viewbox-card-subtitle">{{viewBox.id}}</div>
                             </div>
                             <div class="viewbox-card-actions">
-                                <div class="viewbox-card-badge" *ngIf="viewBox.id === activeViewBoxId">active</div>
+                                <div class="viewbox-card-badge" *ngIf="viewBox.id === activeViewBoxId">активен</div>
                                 <button
                                     mat-icon-button
                                     type="button"
                                     (click)="deleteViewBox(viewBox.id); $event.stopPropagation()"
-                                    matTooltip="Delete viewBox"
+                                    matTooltip="Удалить viewBox"
                                     matTooltipPosition="left"
                                 >
                                     <mat-icon>delete</mat-icon>
                                 </button>
                             </div>
                         </div>
-                        <div class="viewbox-card-line">Workspace: x {{viewBox.x}}, y {{viewBox.y}}</div>
-                        <div class="viewbox-card-line">Size: {{viewBox.width}} × {{viewBox.height}}</div>
-                        <div class="viewbox-card-line">Patch context: local origin 0,0 · local size {{viewBox.patch.localViewPort.width}} × {{viewBox.patch.localViewPort.height}}</div>
-                        <div class="viewbox-card-line">Commands in own patch: {{viewBox.patch.parsedPath.path.length}}</div>
+                        <div class="viewbox-card-line">Положение: x {{viewBox.x}}, y {{viewBox.y}}</div>
+                        <div class="viewbox-card-line">Размер: {{viewBox.width}} × {{viewBox.height}}</div>
+                        <div class="viewbox-card-line">Локальная область patch: 0,0 · {{viewBox.patch.localViewPort.width}} × {{viewBox.patch.localViewPort.height}}</div>
+                        <div class="viewbox-card-line">Команд в patch: {{viewBox.patch.parsedPath.path.length}}</div>
                     </div>
                 </div>
 
                 <ng-template #noViewBoxes>
                     <div class="row viewbox-empty">
-                        No viewBox containers yet
+                        Контейнеры viewBox ещё не созданы
                     </div>
                 </ng-template>
             </app-expandable>
 
-            <app-expandable panelTitle="Active viewBox" [panelInfo]="activeViewBoxPanelInfo" [opened]="true">
+            <app-expandable panelTitle="Выбранный viewBox" [panelInfo]="activeViewBoxPanelInfo" [opened]="true">
                 <ng-container *ngIf="activeViewBox; else noActiveViewBox">
                     <div class="row active-viewbox-note">
-                        Patch-конструктор сейчас работает только внутри {{activeViewBox.name}}
+                        Конструктор patch сейчас работает только внутри {{activeViewBox.name}}
                     </div>
 
                     <div class="viewbox-form">
                         <div class="input-block viewbox-name-block">
-                            <label>Name</label>
+                            <label>Имя</label>
                             <input
                                 class="app-input"
                                 [ngModel]="activeViewBox.name"
                                 (ngModelChange)="updateViewBoxName(activeViewBox.id, $event)"
-                                placeholder="ViewBox name"
+                                placeholder="Имя viewBox"
                             >
                         </div>
                         <div class="input-block">
@@ -150,7 +157,7 @@
                             >
                         </div>
                         <div class="input-block">
-                            <label>Width</label>
+                            <label>Ширина</label>
                             <input
                                 type="number"
                                 step="1"
@@ -163,7 +170,7 @@
                             >
                         </div>
                         <div class="input-block">
-                            <label>Height</label>
+                            <label>Высота</label>
                             <input
                                 type="number"
                                 step="1"
@@ -196,25 +203,25 @@
 
                 <ng-template #noActiveViewBox>
                     <div class="row viewbox-empty">
-                        Select a viewBox from the list to open its menu and patch editor
+                        Выберите viewBox из списка, чтобы открыть его меню и редактировать patch
                     </div>
                 </ng-template>
             </app-expandable>
 
-            <app-expandable panelTitle="Active patch" [panelInfo]="activeViewBox ? activeViewBox.name : 'none'" [opened]="true">
+            <app-expandable panelTitle="Patch выбранного viewBox" [panelInfo]="activeViewBox ? activeViewBox.name : 'нет'" [opened]="true">
                 <ng-container *ngIf="activeViewBox; else noActivePatch">
                     <div class="row">
                         <div class="input-block" style="flex-grow:1"  [class.has-error]="invalidSyntax">
-                            <label class="opaque">Path</label>
+                            <label class="opaque">Путь</label>
                             <textarea
                                 [ngModel]="rawPath"
                                 (ngModelChange)="reloadPath($event, $event.length > 0)"
                                 class="app-input"
                                 style="height:100px;"
-                                placeholder="Paste SVG path for active viewBox"
+                                placeholder="Вставьте SVG path для выбранного viewBox"
                                 (focus)="setHistoryDisabled(true)"
                                 (blur)="setHistoryDisabled(false)"
-                                matTooltip="Invalid path"
+                                matTooltip="Некорректный путь"
                                 matTooltipPosition="below"
                                 matTooltipClass="app-tooltip"
                                 [matTooltipDisabled]="!invalidSyntax"
@@ -229,7 +236,7 @@
                         <button mat-mini-fab
                             color="primary"
                             style="transform: none; margin:0 4px;"
-                            matTooltip="Clear path"
+                            matTooltip="Очистить путь"
                             matTooltipPosition="below"
                             matTooltipClass="app-tooltip"
                             (click)="reloadPath('', false)"
@@ -242,7 +249,7 @@
                             style="transform: none; margin:0 10px 0 auto;"
                             [matMenuTriggerFor]="appCreate"
                             [matMenuTriggerData]="{item:null, idx:-1}"
-                            matTooltip="Append new command"
+                            matTooltip="Добавить команду"
                             matTooltipPosition="below"
                             matTooltipClass="app-tooltip"
                         >
@@ -253,12 +260,12 @@
 
                 <ng-template #noActivePatch>
                     <div class="row viewbox-empty">
-                        Select a viewBox from the list to edit its patch
+                        Выберите viewBox из списка, чтобы редактировать его patch
                     </div>
                 </ng-template>
             </app-expandable>
 
-            <app-expandable panelTitle="Configuration" [opened]="true">
+            <app-expandable panelTitle="Камера и точность" [opened]="true">
                 <div class="row">
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
                         <label>X</label>
@@ -269,89 +276,77 @@
                         <input type="number" step="1" class="app-input" appFormatter [numberValue]="cfg.viewPortY" (numberValueChange)="updateViewPort(cfg.viewPortX, $event, cfg.viewPortWidth, cfg.viewPortHeight)" [disabled]="cfg.viewPortLocked">
                     </div>
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
-                        <label>Width</label>
+                        <label>Ширина</label>
                         <input type="number" step="any" min="0.0001" class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortWidth" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, $event, null)" [disabled]="cfg.viewPortLocked">
                     </div>
                     <div class="input-block" [ngClass]="{'disabled': cfg.viewPortLocked }">
-                        <label>Height</label>
+                        <label>Высота</label>
                         <input type="number" step="any" min="0.0001" class="app-input" appFormatter formatterType="positive-float" [numberValue]="cfg.viewPortHeight" (numberValueChange)="updateViewPort(cfg.viewPortX, cfg.viewPortY, null, $event)" [disabled]="cfg.viewPortLocked">
                     </div>
 
-                    <button mat-flat-button (click)="cfg.viewPortLocked = !cfg.viewPortLocked" [matTooltip]="cfg.viewPortLocked ? 'Unlock viewBox' : 'Lock viewBox'" matTooltipPosition="right" class="mat-flat-button">
+                    <button mat-flat-button (click)="cfg.viewPortLocked = !cfg.viewPortLocked" [matTooltip]="cfg.viewPortLocked ? 'Разблокировать камеру' : 'Заблокировать камеру'" matTooltipPosition="right" class="mat-flat-button">
                         <mat-icon *ngIf="!cfg.viewPortLocked">lock_open</mat-icon>
                         <mat-icon *ngIf="cfg.viewPortLocked">lock</mat-icon>
                     </button>
                 </div>
                 <div class="row">
-                    <mat-checkbox [(ngModel)]="cfg.snapToGrid" style="flex:1">Snap to Grid</mat-checkbox>
-                    <div class="input-block" style="flex:1" matTooltip="Number of decimals to keep when a point is dragged" matTooltipPosition="right" [matTooltipDisabled]="cfg.snapToGrid" [ngClass]="{'disabled': cfg.snapToGrid }">
-                        <label>Point Precision</label>
+                    <mat-checkbox [(ngModel)]="cfg.snapToGrid" style="flex:1">Привязка к шагу</mat-checkbox>
+                    <div class="input-block" style="flex:1" matTooltip="Сколько знаков оставлять при перемещении точки" matTooltipPosition="right" [matTooltipDisabled]="cfg.snapToGrid" [ngClass]="{'disabled': cfg.snapToGrid }">
+                        <label>Точность точек</label>
                         <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.decimalPrecision" [disabled]="cfg.snapToGrid">
                     </div>
-                </div>
-                <div class="row">
-                    <mat-checkbox [(ngModel)]="cfg.showTicks" style="flex:1">Show Ticks</mat-checkbox>
-                    <div class="input-block" style="flex:1" [ngClass]="{'disabled': !cfg.showTicks }">
-                        <label>Interval</label>
-                        <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.tickInterval" [disabled]="!cfg.showTicks">
-                    </div>
-                </div>
-                <div class="row">
-                    <mat-checkbox [(ngModel)]="cfg.filled" style="flex:1">Fill</mat-checkbox>
-                    <mat-checkbox [(ngModel)]="cfg.preview" style="flex:1">Preview</mat-checkbox>
-                    <mat-checkbox [ngModel]="cfg.minifyOutput" (ngModelChange)="cfg.minifyOutput=$event;afterModelChange()" style="flex:1">Minify output</mat-checkbox>
                 </div>
 
             </app-expandable>
 
-            <app-expandable panelTitle="Path Operations" [opened]="true">
+            <app-expandable panelTitle="Операции с patch" [opened]="true">
                 <ng-container *ngIf="activeViewBox; else noActiveOperations">
                     <div class="row path-operations-grid">
                         <div class="input-block" style="flex:1">
-                            <label>Scale X</label>
+                            <label>Масштаб X</label>
                             <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="scaleX">
                         </div>
                         <div class="input-block" style="flex:1">
-                            <label>Scale Y</label>
+                            <label>Масштаб Y</label>
                             <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="scaleY">
                         </div>
-                        <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Scale the active viewBox and its patch together" matTooltipPosition="right" class="mat-flat-button">Scale</button>
+                        <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Масштабировать активный viewBox вместе с patch" matTooltipPosition="right" class="mat-flat-button">Масштаб</button>
                     </div>
 
                     <div class="row path-operations-grid">
                         <div class="input-block" style="flex:1">
-                            <label>Translate X</label>
+                            <label>Сдвиг X</label>
                             <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateX">
                         </div>
                         <div class="input-block" style="flex:1">
-                            <label>Translate Y</label>
+                            <label>Сдвиг Y</label>
                             <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateY">
                         </div>
-                        <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Move the active viewBox across the hall workspace" matTooltipPosition="right" class="mat-flat-button">Translate</button>
+                        <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Сместить активный viewBox по подложке" matTooltipPosition="right" class="mat-flat-button">Сдвиг</button>
                     </div>
 
                     <div class="row path-operations-grid4">
                         <div class="input-block" style="flex:1">
-                            <label>Center X</label>
+                            <label>Центр X</label>
                             <input type="number" step="any" class="app-input" appFormatter [numberValue]="activeViewBoxCenterX" disabled>
                         </div>
                         <div class="input-block" style="flex:1">
-                            <label>Center Y</label>
+                            <label>Центр Y</label>
                             <input type="number" step="any" class="app-input" appFormatter [numberValue]="activeViewBoxCenterY" disabled>
                         </div>
                         <div class="input-block" style="flex:1">
-                            <label>Angle (°)</label>
+                            <label>Угол (°)</label>
                             <input type="number" step="any" class="app-input" appFormatter [(numberValue)]="rotateAngle">
                         </div>
-                        <button mat-flat-button (click)="rotate(rotateAngle)" style="flex:1" matTooltip="Rotate the active patch around the current viewBox center and fit the container to the result" matTooltipPosition="right" class="mat-flat-button">Rotate</button>
+                        <button mat-flat-button (click)="rotate(rotateAngle)" style="flex:1" matTooltip="Повернуть patch вокруг центра viewBox и подогнать контейнер под результат" matTooltipPosition="right" class="mat-flat-button">Поворот</button>
                     </div>
 
                     <div class="row path-operations-grid">
                         <div class="input-block" style="grid-column: span 2;">
-                            <label>Number of decimals</label>
+                            <label>Знаков после запятой</label>
                             <input type="number" step="1" min="0" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals">
                         </div>
-                        <button mat-flat-button (click)="roundValues(roundValuesDecimals)" style="flex:1" matTooltip="Round all values, input the number of decimals to keep" matTooltipPosition="right" class="mat-flat-button">Round</button>
+                        <button mat-flat-button (click)="roundValues(roundValuesDecimals)" style="flex:1" matTooltip="Округлить все значения до указанного количества знаков" matTooltipPosition="right" class="mat-flat-button">Округлить</button>
                     </div>
 
                     <div class="row path-fit-row">
@@ -359,21 +354,21 @@
                             mat-flat-button
                             (click)="fitViewBoxToPatch()"
                             style="flex:1"
-                            matTooltip="Resize the active viewBox to the current patch bounding box, with local path shift when needed"
+                            matTooltip="Подобрать размер активного viewBox по границам текущего patch"
                             matTooltipPosition="right"
                             class="mat-flat-button"
-                        >Подобрать viewBox по размеру patch</button>
+                        >Подобрать viewBox под patch</button>
                     </div>
                 </ng-container>
 
                 <ng-template #noActiveOperations>
                     <div class="row viewbox-empty">
-                        Select a viewBox from the list to use patch operations
+                        Выберите viewBox из списка, чтобы использовать операции с patch
                     </div>
                 </ng-template>
             </app-expandable>
 
-            <app-expandable panelTitle="Commands" [opened]="true">
+            <app-expandable panelTitle="Команды пути" [opened]="true">
                 <ng-container *ngIf="activeViewBox; else noActiveCommands">
                     <div *ngFor="let item of parsedPath.path; let j=index"
                         (mouseenter)="hoveredItem=item"
@@ -398,7 +393,7 @@
 
                 <ng-template #noActiveCommands>
                     <div class="row viewbox-empty">
-                        Select a viewBox from the list to see and edit its commands
+                        Выберите viewBox из списка, чтобы видеть и редактировать команды пути
                     </div>
                 </ng-template>
             </app-expandable>
@@ -410,7 +405,7 @@
         <button mat-raised-button class="left-column-open" *ngIf="!isLeftPanelOpened" (click)="toggleLeftPanel()">
             <mat-icon>arrow_right</mat-icon>
         </button>
-        <button mat-mini-fab *ngIf="activeViewBox && ((!draggedPoint && focusedItem) || parsedPath.path.length===0) && !(cfg.preview || isEditingImages)"
+        <button mat-mini-fab *ngIf="activeViewBox && ((!draggedPoint && focusedItem) || parsedPath.path.length===0)"
             color="accent"
             class="add-button"
             [ngStyle]="{
@@ -431,41 +426,19 @@
             {{cursorPosition.y.toFixed(cursorPosition.decimals)}}
         </label>
 
-        <label class="hover-position" *ngIf="!cursorPosition && hoverPosition && !isEditingImages">
+        <label class="hover-position" *ngIf="!cursorPosition && hoverPosition">
             {{hoverPosition.x.toFixed(3)}},
             {{hoverPosition.y.toFixed(3)}}
         </label>
 
-        <button mat-mini-fab *ngIf="(focusedImage && !cfg.preview && !dragging)"
-            color="accent"
-            class="add-button"
-            [ngStyle]="{ 'left': 8 + (max(focusedImage.x1,focusedImage.x2) - cfg.viewPortX)/strokeWidth+'px', 'top': 8 + (max(focusedImage.y1,focusedImage.y2) - cfg.viewPortY)/strokeWidth+'px' }"
-            [ngClass]="{'opened':isContextualMenuOpened}"
-            [matMenuTriggerFor]="appImage"
-            [matMenuTriggerData]="{image:focusedImage}"
-            (menuOpened)="isContextualMenuOpened = true"
-            (menuClosed)="isContextualMenuOpened = false">
-            <mat-icon svgIcon="more"></mat-icon>
-        </button>
-
         <div class="scene-top-actions">
-            <button mat-mini-fab color="primary" matTooltip="Undo" matTooltipPosition="below" (click)="undo()" [disabled]="!canUndo()"><mat-icon>undo</mat-icon></button>
-            <button mat-mini-fab color="primary" matTooltip="Redo" matTooltipPosition="below" (click)="redo()" [disabled]="!canRedo()"><mat-icon>redo</mat-icon></button>
-
-            <app-upload-image [class.displayed]="isEditingImages" class="add-image-button" (addImage)="addImage($event)" (cancel)="cancelAddImage()" #uploader></app-upload-image>
-
-            <button mat-mini-fab [color]="isEditingImages ? 'accent' : 'primary'" [matTooltip]="isEditingImages ? '' : 'Toggle image management mode'" matTooltipPosition="below" style="margin-right: 24px;margin-left: 24px" (click)="toggleImageEditing(uploader)">
-                <mat-icon>image</mat-icon>
-            </button>
-
-            <app-export [path]="activeViewBox ? rawPath : ''" [name]="pathName || '' " style="margin-right: 8px"></app-export>
-            <app-share [path]="activeViewBox ? rawPath : ''"></app-share>
+            <button mat-mini-fab color="primary" matTooltip="Отменить" matTooltipPosition="below" (click)="undo()" [disabled]="!canUndo()"><mat-icon>undo</mat-icon></button>
+            <button mat-mini-fab color="primary" matTooltip="Повторить" matTooltipPosition="below" (click)="redo()" [disabled]="!canRedo()"><mat-icon>redo</mat-icon></button>
         </div>
         <div class="scene-bottom-actions">
-            <button mat-mini-fab color="primary" (click)="cfg.snapToGrid = !cfg.snapToGrid" matTooltip="Snap to Grid" matTooltipPosition="left"><mat-icon>{{ cfg.snapToGrid ? 'grid_on' : 'grid_off' }}</mat-icon></button>
-            <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;canvas?.zoomViewPort(9/10)" matTooltip="Zoom In" matTooltipPosition="left" style="margin-top: 24px"><mat-icon svgIcon="zoom_in"></mat-icon></button>
-            <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;zoomAuto()" matTooltip="Zoom to Fit" matTooltipPosition="left"><mat-icon svgIcon="zoom_fit"></mat-icon></button>
-            <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;canvas?.zoomViewPort(10/9)" matTooltip="Zoom Out" matTooltipPosition="left"><mat-icon svgIcon="zoom_out"></mat-icon></button>
+            <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;canvas?.zoomViewPort(9/10)" matTooltip="Приблизить" matTooltipPosition="left" style="margin-top: 24px"><mat-icon svgIcon="zoom_in"></mat-icon></button>
+            <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;zoomAuto()" matTooltip="Показать целиком" matTooltipPosition="left"><mat-icon svgIcon="zoom_fit"></mat-icon></button>
+            <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;canvas?.zoomViewPort(10/9)" matTooltip="Отдалить" matTooltipPosition="left"><mat-icon svgIcon="zoom_out"></mat-icon></button>
         </div>
 
         <div
@@ -495,7 +468,7 @@
             xmlns:xlink="http://www.w3.org/1999/xlink"
             app-canvas
             [attr.viewBox]="cfg.viewPortX+' '+cfg.viewPortY+' '+cfg.viewPortWidth+' '+cfg.viewPortHeight"
-            [ngClass]="{preview:cfg.preview}"
+            
             [parsedPath]="parsedPath"
             [targetPoints]="targetPoints"
             [controlPoints]="controlPoints"
@@ -511,9 +484,9 @@
             [viewPortWidth]="cfg.viewPortWidth"
             [viewPortHeight]="cfg.viewPortHeight"
             [strokeWidth]="strokeWidth"
-            [preview]="cfg.preview"
-            [filled]="cfg.filled"
-            [showTicks]="cfg.showTicks"
+            [preview]="false"
+            [filled]="false"
+            [showTicks]="false"
             [tickInterval]="cfg.tickInterval"
             (afterModelChange)="afterModelChange()"
             (dragging)="setIsDragging($event)"
@@ -521,7 +494,7 @@
             (canvasHeightChange)="canvasHeight = $event"
             (emptyCanvas)="isLeftPanelOpened = false"
             (viewPort)="updateViewPort($event.x, $event.y, $event.w, $event.h, $event.force)"
-            [editImages]="isEditingImages"
+            [editImages]="false"
             [images]="images"
             [(focusedImage)]="focusedImage"
             (cursorPosition)="setCursorPosition($event)"
@@ -579,14 +552,6 @@
     </div>
 </div>
 
-<div *ngIf="isLeftPanelOpened" class="footer">
-    <a href="https://github.com/Yqnn/svg-path-editor" target="_blank">
-        <mat-icon svgIcon="github"></mat-icon> GitHub
-    </a>
-    <a href="https://github.com/sponsors/Yqnn" target="_blank">
-        <mat-icon svgIcon="sponsor" class="sponsor"></mat-icon> Sponsor
-    </a>
-</div>
 
 <app-import (importPath)="openPath($event, '')"></app-import>
 
@@ -594,68 +559,47 @@
     <ng-template matMenuContent let-item="item" let-idx="idx">
         <button mat-menu-item [matMenuTriggerFor]="appCreate" [matMenuTriggerData]="{item:item, idx:idx}">
             <mat-icon>add</mat-icon>
-            Insert After
+            Вставить после
         </button>
         <button mat-menu-item [matMenuTriggerFor]="appCreate" [matMenuTriggerData]="{item:item, idx:idx, convert:true}">
             <mat-icon>autorenew</mat-icon>
-            Convert To
+            Преобразовать в
         </button>
         <button mat-menu-item (click)="item.setRelative(!item.relative); afterModelChange();">
             <mat-icon>autorenew</mat-icon>
-            <ng-container *ngIf="item.relative">Set Absolute</ng-container>
-            <ng-container *ngIf="!item.relative">Set Relative</ng-container>
+            <ng-container *ngIf="item.relative">Сделать абсолютной</ng-container>
+            <ng-container *ngIf="!item.relative">Сделать относительной</ng-container>
         </button>
         <button mat-menu-item (click)="useAsOrigin(item)" [disabled]="!canUseAsOrigin(item)">
             <mat-icon>vertical_align_top</mat-icon>
-            Start Path From Here
+            Начать путь отсюда
         </button>
         <button mat-menu-item (click)="useAsOrigin(item, true)" [disabled]="!canUseAsOrigin(item) || !hasSubPaths()">
             <mat-icon>vertical_align_top</mat-icon>
-            Start Subpath From Here
+            Начать подпуть отсюда
         </button>
         <button mat-menu-item (click)="reverseSubPath(item)" [disabled]="!hasSubPaths()">
             <mat-icon>swap_vert</mat-icon>
-            Reverse Subpath
+            Развернуть подпуть
         </button>
         <button mat-menu-item (click)="delete(item)" [disabled]="!canDelete(item)">
-            <mat-icon>delete</mat-icon> Delete
+            <mat-icon>delete</mat-icon> Удалить
         </button>
     </ng-template>
 </mat-menu>
 
 <mat-menu #appCreate="matMenu">
     <ng-template matMenuContent let-item="item" let-idx="idx" let-convert="convert">
-        <button mat-menu-item (click)="insert('M', item, convert)" [disabled]="convert?!canConvert(item,'M'):!canInsertAfter(item, 'M')"><strong>M</strong> Move to</button>
-        <button mat-menu-item (click)="insert('L', item, convert)" [disabled]="convert?!canConvert(item,'L'):!canInsertAfter(item, 'L')"><strong>L</strong> Line to</button>
-        <button mat-menu-item (click)="insert('V', item, convert)" [disabled]="convert?!canConvert(item,'V'):!canInsertAfter(item, 'V')"><strong>V</strong> Vertical Line to</button>
-        <button mat-menu-item (click)="insert('H', item, convert)" [disabled]="convert?!canConvert(item,'H'):!canInsertAfter(item, 'H')"><strong>H</strong> Horizontal Line to</button>
-        <button mat-menu-item (click)="insert('C', item, convert)" [disabled]="convert?!canConvert(item,'C'):!canInsertAfter(item, 'C')"><strong>C</strong> Curve to</button>
-        <button mat-menu-item (click)="insert('S', item, convert)" [disabled]="convert?!canConvert(item,'S'):!canInsertAfter(item, 'S')"><strong>S</strong> Shorthand Curve to</button>
-        <button mat-menu-item (click)="insert('Q', item, convert)" [disabled]="convert?!canConvert(item,'Q'):!canInsertAfter(item, 'Q')"><strong>Q</strong> Quadratic Bezier Curve to</button>
-        <button mat-menu-item (click)="insert('T', item, convert)" [disabled]="convert?!canConvert(item,'T'):!canInsertAfter(item, 'T')"><strong>T</strong> Shorthand Quadratic Bezier Curve to</button>
-        <button mat-menu-item (click)="insert('A', item, convert)" [disabled]="convert?!canConvert(item,'A'):!canInsertAfter(item, 'A')"><strong>A</strong> Elliptical Arc</button>
-        <button mat-menu-item (click)="insert('Z', item, convert)" [disabled]="convert?!canConvert(item,'Z'):!canInsertAfter(item, 'Z')"><strong>Z</strong> Close Path</button>
+        <button mat-menu-item (click)="insert('M', item, convert)" [disabled]="convert?!canConvert(item,'M'):!canInsertAfter(item, 'M')"><strong>M</strong> Переместить в</button>
+        <button mat-menu-item (click)="insert('L', item, convert)" [disabled]="convert?!canConvert(item,'L'):!canInsertAfter(item, 'L')"><strong>L</strong> Линия в</button>
+        <button mat-menu-item (click)="insert('V', item, convert)" [disabled]="convert?!canConvert(item,'V'):!canInsertAfter(item, 'V')"><strong>V</strong> Вертикаль в</button>
+        <button mat-menu-item (click)="insert('H', item, convert)" [disabled]="convert?!canConvert(item,'H'):!canInsertAfter(item, 'H')"><strong>H</strong> Горизонталь в</button>
+        <button mat-menu-item (click)="insert('C', item, convert)" [disabled]="convert?!canConvert(item,'C'):!canInsertAfter(item, 'C')"><strong>C</strong> Кривая в</button>
+        <button mat-menu-item (click)="insert('S', item, convert)" [disabled]="convert?!canConvert(item,'S'):!canInsertAfter(item, 'S')"><strong>S</strong> Сглаженная кривая в</button>
+        <button mat-menu-item (click)="insert('Q', item, convert)" [disabled]="convert?!canConvert(item,'Q'):!canInsertAfter(item, 'Q')"><strong>Q</strong> Квадратичная Безье в</button>
+        <button mat-menu-item (click)="insert('T', item, convert)" [disabled]="convert?!canConvert(item,'T'):!canInsertAfter(item, 'T')"><strong>T</strong> Сглаженная квадратичная в</button>
+        <button mat-menu-item (click)="insert('A', item, convert)" [disabled]="convert?!canConvert(item,'A'):!canInsertAfter(item, 'A')"><strong>A</strong> Эллиптическая дуга</button>
+        <button mat-menu-item (click)="insert('Z', item, convert)" [disabled]="convert?!canConvert(item,'Z'):!canInsertAfter(item, 'Z')"><strong>Z</strong> Замкнуть путь</button>
     </ng-template>
 </mat-menu>
 
-<mat-menu #appImage="matMenu">
-    <ng-template matMenuContent let-image="image">
-        <div mat-menu-item [disableRipple]="true" (click)="$event.stopPropagation()">
-            <mat-icon>opacity</mat-icon>
-            <ng-container>Opacity</ng-container>
-            <div style="display:inline-block; width:180px;">
-                <mat-slider min="0" max="1" step="0.01" style="margin:0 16px; min-width:100px" color="accent">
-                    <input matSliderThumb [(ngModel)]="image.opacity">
-                </mat-slider>
-                {{image.opacity}}
-            </div>
-        </div>
-        <button mat-menu-item (click)="image.preserveAspectRatio = !image.preserveAspectRatio; $event.stopPropagation()">
-            <mat-icon>aspect_ratio</mat-icon>
-            <ng-container>Toggle Preserve Aspect Ratio</ng-container>
-        </button>
-        <button mat-menu-item (click)="deleteImage(image)">
-            <mat-icon>delete</mat-icon> Delete
-        </button>
-    </ng-template>
-</mat-menu>

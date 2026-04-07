@@ -1,5 +1,5 @@
 :host {
-    background-color: #1e1e1e;
+    background-color: transparent;
     user-select: none;
 }
 
@@ -8,24 +8,16 @@
 }
 
 path {
-    stroke: white;
+    stroke: #111111;
     fill: none;
 }
 
-:host.has-hall-background path {
-    stroke: #111111;
-}
-
 path.filled {
-    fill: rgba(255,255,255,0.25);
-}
-
-:host.has-hall-background path.filled {
     fill: rgba(17, 17, 17, 0.18);
 }
 
 path.hovered {
-    stroke: red;
+    stroke: #d62828;
     fill: none;
 }
 
@@ -34,20 +26,8 @@ path.dragged {
     fill: none;
 }
 
-line.grid {
-    stroke: #353536;
-}
-
-line.grid.tick {
-    stroke: #454545;
-}
-
 line.control {
-    stroke: gray;
-}
-
-line.hovered {
-    stroke: red;
+    stroke: rgba(17, 17, 17, 0.45);
 }
 
 circle {
@@ -56,15 +36,16 @@ circle {
 }
 
 circle.control {
-    fill: gray;
+    fill: rgba(17, 17, 17, 0.55);
 }
 
 circle.target {
-    fill: white;
+    fill: #ffffff;
+    stroke: rgba(17, 17, 17, 0.7);
 }
 
 circle.hovered {
-    fill: red;
+    fill: #d62828;
 }
 
 circle.dragged {
@@ -72,33 +53,26 @@ circle.dragged {
 }
 
 :host.preview {
-    background-color: white;
+    background-color: transparent;
 }
 
 :host.preview path {
-    stroke: black;
+    stroke: #111111;
 }
 
 :host.preview path.filled {
-    fill: black;
+    fill: #111111;
     stroke: none;
 }
 
 :host.preview path.hovered {
-    stroke: red;
+    stroke: #d62828;
     fill: none;
 }
 
 :host.preview circle,
 :host.preview line {
     display: none;
-}
-
-text.tick {
-    fill: #595959;
-    text-anchor: end;
-    cursor: default;
-    user-select: none;
 }
 
 image {
