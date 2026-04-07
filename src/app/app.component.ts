@@ -582,10 +582,6 @@ export class AppComponent implements AfterViewInit {
   }
 
   afterModelChange() {
-    const activeViewBox = this.activeViewBox;
-    if (activeViewBox) {
-      this.constrainPathToBounds(this.parsedPath, activeViewBox.width, activeViewBox.height);
-    }
     this.reloadPoints();
     this.rawPath = this.parsedPath.asString(4, this.cfg.minifyOutput);
     this.syncActivePatchFromEditor();
@@ -697,10 +693,6 @@ export class AppComponent implements AfterViewInit {
     this.invalidSyntax = false;
     try {
       this.parsedPath = new SvgPath(this.rawPath);
-      const activeViewBox = this.activeViewBox;
-      if (activeViewBox) {
-        this.constrainPathToBounds(this.parsedPath, activeViewBox.width, activeViewBox.height);
-      }
       this.reloadPoints();
       this.syncActivePatchFromEditor(false);
       if (autozoom) {
@@ -805,7 +797,6 @@ export class AppComponent implements AfterViewInit {
       viewBox[field] = Math.max(1, value);
       viewBox.patch.localViewPort.width = viewBox.width;
       viewBox.patch.localViewPort.height = viewBox.height;
-      this.constrainViewBoxPatch(viewBox);
     } else {
       viewBox[field] = value;
     }
@@ -1056,7 +1047,6 @@ export class AppComponent implements AfterViewInit {
     try {
       if (rawPath) {
         parsedPath = new SvgPath(rawPath);
-        this.constrainPathToBounds(parsedPath, width, height);
         safeRawPath = parsedPath.asString(4, this.cfg.minifyOutput);
       }
     } catch {

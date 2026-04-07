@@ -534,8 +534,6 @@
                         <svg
                             *ngIf="viewBox.patch.rawPath && viewBox.id !== activeViewBoxId"
                             class="viewbox-frame-preview"
-                            [attr.viewBox]="'0 0 ' + viewBox.width + ' ' + viewBox.height"
-                            preserveAspectRatio="none"
                         >
                             <path [attr.d]="viewBox.patch.rawPath"></path>
                         </svg>
