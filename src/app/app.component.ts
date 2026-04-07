@@ -112,8 +112,6 @@ export class AppComponent implements AfterViewInit {
   scaleY = 1;
   translateX = 0;
   translateY = 0;
-  rotateX = 0;
-  rotateY = 0;
   rotateAngle = 0;
   roundValuesDecimals = 1;
 
@@ -270,6 +268,14 @@ export class AppComponent implements AfterViewInit {
 
   get activePatchHeight(): number {
     return this.activeViewBox?.height || 0;
+  }
+
+  get activeViewBoxCenterX(): number {
+    return this.activeViewBox ? this.activeViewBox.width / 2 : 0;
+  }
+
+  get activeViewBoxCenterY(): number {
+    return this.activeViewBox ? this.activeViewBox.height / 2 : 0;
   }
 
   ngAfterViewInit() {
@@ -483,30 +489,70 @@ export class AppComponent implements AfterViewInit {
   }
 
   scale(x: number, y: number) {
-    if (!this.activeViewBox) {
+    const viewBox = this.activeViewBox;
+    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y) || x === 0 || y === 0 || (x === 1 && y === 1)) {
       return;
     }
-    this.parsedPath.scale(1 * x, 1 * y);
+
+    const nextWidth = viewBox.width * x;
+    const nextHeight = viewBox.height * y;
+    const offsetX = Math.min(0, nextWidth);
+    const offsetY = Math.min(0, nextHeight);
+
+    this.parsedPath.scale(x, y);
+
+    if (offsetX !== 0 || offsetY !== 0) {
+      this.parsedPath.translate(-offsetX, -offsetY);
+    }
+
+    viewBox.x += offsetX;
+    viewBox.y += offsetY;
+    viewBox.width = Math.max(1, Math.abs(nextWidth));
+    viewBox.height = Math.max(1, Math.abs(nextHeight));
+
     this.scaleX = 1;
     this.scaleY = 1;
+    this.viewBoxes = [...this.viewBoxes];
     this.afterModelChange();
   }
 
   translate(x: number, y: number) {
-    if (!this.activeViewBox) {
+    const viewBox = this.activeViewBox;
+    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y) || (x === 0 && y === 0)) {
       return;
     }
-    this.parsedPath.translate(1 * x, 1 * y);
+
+    viewBox.x += x;
+    viewBox.y += y;
+
     this.translateX = 0;
     this.translateY = 0;
+    this.viewBoxes = [...this.viewBoxes];
     this.afterModelChange();
   }
 
-  rotate(x: number, y: number, angle: number) {
-    if (!this.activeViewBox) {
+  rotate(angle: number) {
+    const viewBox = this.activeViewBox;
+    if (!viewBox || !Number.isFinite(angle) || angle === 0 || this.parsedPath.path.length === 0) {
       return;
     }
-    this.parsedPath.rotate(1 * x, 1 * y, 1 * angle);
+
+    this.parsedPath.rotate(viewBox.width / 2, viewBox.height / 2, angle);
+
+    const bbox = this.getParsedPathBoundingBox();
+    if (!bbox) {
+      return;
+    }
+
+    this.parsedPath.translate(-bbox.x, -bbox.y);
+
+    viewBox.x += bbox.x;
+    viewBox.y += bbox.y;
+    viewBox.width = Math.max(1, bbox.width);
+    viewBox.height = Math.max(1, bbox.height);
+
+    this.rotateAngle = 0;
+    this.viewBoxes = [...this.viewBoxes];
     this.afterModelChange();
   }
 
@@ -933,6 +979,18 @@ export class AppComponent implements AfterViewInit {
 
   private getActivePatchContext(): ViewBoxPatchContext | null {
     return this.activeViewBox?.patch || null;
+  }
+
+  private getParsedPathBoundingBox(): DOMRect | null {
+    if (this.parsedPath.path.length === 0) {
+      return null;
+    }
+
+    try {
+      return browserComputePathBoundingBox(this.parsedPath.asString(6, this.cfg.minifyOutput));
+    } catch {
+      return null;
+    }
   }
 
   private syncActivePatchFromEditor(persist = true): void {

@@ -289,7 +289,7 @@
                             <label>Scale Y</label>
                             <input appFormatter [(numberValue)]="scaleY" class="app-input">
                         </div>
-                        <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Scale the full path with provided values" matTooltipPosition="right" class="mat-flat-button">Scale</button>
+                        <button mat-flat-button (click)="scale(scaleX, scaleY)" style="flex:1" matTooltip="Scale the active viewBox and its patch together" matTooltipPosition="right" class="mat-flat-button">Scale</button>
                     </div>
 
                     <div class="row path-operations-grid">
@@ -301,23 +301,23 @@
                             <label>Translate Y</label>
                             <input appFormatter [(numberValue)]="translateY" class="app-input">
                         </div>
-                        <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Translate the full path with provided values" matTooltipPosition="right" class="mat-flat-button">Translate</button>
+                        <button mat-flat-button (click)="translate(translateX, translateY)" style="flex:1" matTooltip="Move the active viewBox across the hall workspace" matTooltipPosition="right" class="mat-flat-button">Translate</button>
                     </div>
 
                     <div class="row path-operations-grid4">
                         <div class="input-block" style="flex:1">
-                            <label>Origin X</label>
-                            <input appFormatter [(numberValue)]="rotateX" class="app-input">
+                            <label>Center X</label>
+                            <input appFormatter [numberValue]="activeViewBoxCenterX" class="app-input" disabled>
                         </div>
                         <div class="input-block" style="flex:1">
-                            <label>Origin Y</label>
-                            <input appFormatter [(numberValue)]="rotateY" class="app-input">
+                            <label>Center Y</label>
+                            <input appFormatter [numberValue]="activeViewBoxCenterY" class="app-input" disabled>
                         </div>
                         <div class="input-block" style="flex:1">
                             <label>Angle</label>
                             <input appFormatter suffix="°" [(numberValue)]="rotateAngle" class="app-input">
                         </div>
-                        <button mat-flat-button (click)="rotate(rotateX, rotateY, rotateAngle)" style="flex:1" matTooltip="Rotate the full path by the given angle in degrees about the given point" matTooltipPosition="right" class="mat-flat-button">Rotate</button>
+                        <button mat-flat-button (click)="rotate(rotateAngle)" style="flex:1" matTooltip="Rotate the active patch around the current viewBox center and fit the container to the result" matTooltipPosition="right" class="mat-flat-button">Rotate</button>
                     </div>
 
                     <div class="row path-operations-grid">
