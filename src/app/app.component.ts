@@ -1133,6 +1133,7 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
+    this.activateViewBox(viewBoxId);
     this.canvas?.stopDrag();
     this.viewBoxDrag = {
       viewBoxId,

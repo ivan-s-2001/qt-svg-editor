@@ -638,6 +638,7 @@
                         <div
                             class="viewbox-frame-label"
                             [class.dragging]="isDraggingViewBoxLabel(viewBox.id)"
+                            (click)="selectViewBox(viewBox.id); $event.stopPropagation()"
                             (pointerdown)="startViewBoxDrag(viewBox.id, $event)"
                             [title]="viewBox.name"
                         >
