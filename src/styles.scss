@@ -273,3 +273,29 @@ button.mat-mdc-icon-button.more-button {
     line-height: 1.15;
     white-space: nowrap;
 }
+
+.viewbox-overlay-viewport .viewbox-frame .viewbox-frame-label {
+    top: auto !important;
+    bottom: 100% !important;
+}
+
+.viewbox-overlay-viewport .viewbox-frame .viewbox-frame-label.dragging {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    min-height: auto !important;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+}
+
+.viewbox-overlay-viewport .viewbox-frame .viewbox-frame-label.dragging .viewbox-frame-label-text {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+}
+
+.viewbox-overlay-viewport .viewbox-frame .viewbox-frame-label.dragging .viewbox-frame-label-coordinates {
+    align-self: center !important;
+    text-align: center !important;
+}
