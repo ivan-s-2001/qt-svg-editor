@@ -1529,8 +1529,7 @@ export class AppComponent implements AfterViewInit {
 
   private escapeSqlString(value: string): string {
     return value
-      .replace(/\r/g, '\\r')
-      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '')
       .replace(/'/g, "''");
   }
 
