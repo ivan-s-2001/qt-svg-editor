@@ -172,6 +172,11 @@ export class AppComponent implements AfterViewInit {
   isEditingImages = false;
   isViewBoxExportPopupOpen = false;
   isViewBoxExportCopied = false;
+  isViewBoxSqlExportCopied = false;
+  isAllViewBoxesExportPopupOpen = false;
+  isAllViewBoxesExportCopied = false;
+  viewBoxExportHallIdValue = '';
+  allViewBoxesExportHallIdValue = '';
 
   max = Math.max;
   trackByIndex = (idx: number, _: unknown) => idx;
@@ -206,10 +211,18 @@ export class AppComponent implements AfterViewInit {
   @HostListener('document:keydown', ['$event']) onKeyDown($event: KeyboardEvent) {
     const tag = $event.target instanceof Element ? $event.target.tagName : null;
 
-    if (this.isViewBoxExportPopupOpen && $event.key === KEYBOARD.KEYS.ESCAPE) {
-      this.closeViewBoxExportPopup();
-      $event.preventDefault();
-      return;
+    if ($event.key === KEYBOARD.KEYS.ESCAPE) {
+      if (this.isViewBoxExportPopupOpen) {
+        this.closeViewBoxExportPopup();
+        $event.preventDefault();
+        return;
+      }
+
+      if (this.isAllViewBoxesExportPopupOpen) {
+        this.closeAllViewBoxesExportPopup();
+        $event.preventDefault();
+        return;
+      }
     }
 
     if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
@@ -364,17 +377,38 @@ export class AppComponent implements AfterViewInit {
     const pathD = activeViewBox.patch.rawPath || this._rawPath || '';
 
     return [
-      `(NULL, #new_hall_id#, ${activeViewBox.x}, ${activeViewBox.y}, ${activeViewBox.width}, ${activeViewBox.height}, 0, '<div style="
-    position:absolute;
-    width:${activeViewBox.width}px;
-    height:${activeViewBox.height}px;
-    box-sizing:border-box;
-  " generated_object>
-    <svg viewBox="0 0 ${activeViewBox.width} ${activeViewBox.height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
-      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />
-    </svg>
-  </div>', 1)`
+      `x - ${activeViewBox.x} (@x сейчас для логики)`,
+      `y - ${activeViewBox.y} (@y сейчас для логики)`,
+      `width - ${activeViewBox.width} (@width сейчас для логики)`,
+      `heght - ${activeViewBox.height} (@heght сейчас для логики)`,
+      'param -',
+      '"',
+      '<div style="',
+      '    position:absolute;',
+      '    width:@x;',
+      '    height:@y;',
+      '    box-sizing:border-box;',
+      '  " generated_object>',
+      '    <svg viewBox="0 0 @width @heght" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">',
+      `      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />`,
+      '    </svg>',
+      '  </div>',
+      '"'
     ].join('\n');
+  }
+
+
+  get activeViewBoxSqlExportText(): string {
+    const activeViewBox = this.activeViewBox;
+    if (!activeViewBox) {
+      return '';
+    }
+
+    return this.buildViewBoxesSqlInsert([activeViewBox], this.viewBoxExportHallIdValue);
+  }
+
+  get allViewBoxesSqlExportText(): string {
+    return this.buildViewBoxesSqlInsert(this.viewBoxes, this.allViewBoxesExportHallIdValue);
   }
 
   isDraggingViewBoxLabel(viewBoxId: string): boolean {
@@ -1015,12 +1049,14 @@ export class AppComponent implements AfterViewInit {
     }
 
     this.isViewBoxExportCopied = false;
+    this.isViewBoxSqlExportCopied = false;
     this.isViewBoxExportPopupOpen = true;
   }
 
   closeViewBoxExportPopup(): void {
     this.isViewBoxExportPopupOpen = false;
     this.isViewBoxExportCopied = false;
+    this.isViewBoxSqlExportCopied = false;
   }
 
   async copyActiveViewBoxExportText(): Promise<void> {
@@ -1029,39 +1065,49 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
-    let copied = false;
+    this.isViewBoxExportCopied = await this.copyTextToClipboard(text);
+  }
 
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        copied = true;
-      }
-    } catch {
-      copied = false;
+  updateViewBoxExportHallId(value: string): void {
+    this.viewBoxExportHallIdValue = value;
+    this.isViewBoxSqlExportCopied = false;
+  }
+
+  updateAllViewBoxesExportHallId(value: string): void {
+    this.allViewBoxesExportHallIdValue = value;
+    this.isAllViewBoxesExportCopied = false;
+  }
+
+  async copyActiveViewBoxSqlExportText(): Promise<void> {
+    const text = this.activeViewBoxSqlExportText;
+    if (!text) {
+      return;
     }
 
-    if (!copied) {
-      const textarea = this.document.createElement('textarea');
-      textarea.value = text;
-      textarea.setAttribute('readonly', 'true');
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      textarea.style.pointerEvents = 'none';
-      textarea.style.left = '-9999px';
-      this.document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
+    this.isViewBoxSqlExportCopied = await this.copyTextToClipboard(text);
+  }
 
-      try {
-        copied = this.document.execCommand('copy');
-      } catch {
-        copied = false;
-      }
-
-      textarea.remove();
+  openAllViewBoxesExportPopup(): void {
+    if (this.viewBoxes.length === 0) {
+      return;
     }
 
-    this.isViewBoxExportCopied = copied;
+    this.isAllViewBoxesExportCopied = false;
+    this.isAllViewBoxesExportPopupOpen = true;
+  }
+
+  closeAllViewBoxesExportPopup(): void {
+    this.isAllViewBoxesExportPopupOpen = false;
+    this.isAllViewBoxesExportCopied = false;
+  }
+
+  async copyAllViewBoxesSqlExportText(): Promise<void> {
+    const text = this.allViewBoxesSqlExportText;
+    if (!text) {
+      return;
+    }
+
+    this.isAllViewBoxesExportCopied = await this.copyTextToClipboard(text);
   }
 
   updateViewBoxName(viewBoxId: string, value: string): void {
@@ -1287,6 +1333,7 @@ export class AppComponent implements AfterViewInit {
     const nextActiveId = id && this.viewBoxes.some((viewBox) => viewBox.id === id) ? id : null;
     this.activeViewBoxId = nextActiveId;
     this.closeViewBoxExportPopup();
+    this.closeAllViewBoxesExportPopup();
 
     if (nextActiveId) {
       this.storage.setActiveViewBoxId(nextActiveId);
@@ -1429,6 +1476,104 @@ export class AppComponent implements AfterViewInit {
     if (persist) {
       this.persistViewBoxes();
     }
+  }
+
+
+  private normalizeHallIdLiteral(value: string): string {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return '#new_hall_id#';
+    }
+
+    return /^\d+$/.test(trimmed) ? trimmed : '#new_hall_id#';
+  }
+
+  private buildViewBoxesSqlInsert(viewBoxes: ViewBoxEntity[], hallIdValue: string): string {
+    if (viewBoxes.length === 0) {
+      return '';
+    }
+
+    const hallId = this.normalizeHallIdLiteral(hallIdValue);
+    const rows = viewBoxes.map((viewBox) => this.buildViewBoxSqlRow(viewBox, hallId));
+
+    return [
+      'INSERT INTO `place` (`id`, `hall_id`, `stool_id`, `x`, `y`, `block`, `series`, `place`, `disabled`) VALUES',
+      rows.map((row, index) => `${row}${index < rows.length - 1 ? ',' : ';'}`).join('
+')
+    ].join('
+');
+  }
+
+  private buildViewBoxSqlRow(viewBox: ViewBoxEntity, hallId: string): string {
+    const param = this.escapeSqlString(this.buildViewBoxParamMarkup(viewBox));
+
+    return `(NULL, ${hallId}, ${viewBox.x}+0, ${viewBox.y}+0, ${viewBox.width}, ${viewBox.height}, 0, '${param}', 1)`;
+  }
+
+  private buildViewBoxParamMarkup(viewBox: ViewBoxEntity): string {
+    const pathD = viewBox.patch.rawPath || '';
+
+    return [
+      '<div style="',
+      '    position:absolute;',
+      `    width:${viewBox.width}px;`,
+      `    height:${viewBox.height}px;`,
+      '    box-sizing:border-box;',
+      '  " generated_object>',
+      `    <svg viewBox="0 0 ${viewBox.width} ${viewBox.height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">`,
+      `      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />`,
+      '    </svg>',
+      '  </div>'
+    ].join('
+');
+  }
+
+  private escapeSqlString(value: string): string {
+    return value
+      .replace(/
+/g, '
+')
+      .replace(/
+/g, '
+')
+      .replace(/'/g, "''");
+  }
+
+  private async copyTextToClipboard(text: string): Promise<boolean> {
+    let copied = false;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+
+    if (!copied) {
+      const textarea = this.document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', 'true');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      textarea.style.left = '-9999px';
+      this.document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      try {
+        copied = this.document.execCommand('copy');
+      } catch {
+        copied = false;
+      }
+
+      textarea.remove();
+    }
+
+    return copied;
   }
 
   private constrainViewBoxPatch(viewBox: ViewBoxEntity): void {
