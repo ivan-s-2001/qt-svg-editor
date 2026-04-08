@@ -187,9 +187,22 @@
                                             </div>
 
                                             <div class="viewbox-editor-card" *ngIf="viewBox.id === activeViewBoxId" (click)="$event.stopPropagation()">
-                                                <div class="viewbox-editor-header">
-                                                    <div class="viewbox-editor-title">Настройки {{viewBox.name}}</div>
-                                                    <div class="viewbox-editor-subtitle">Редактирование открыто внутри списка viewBox</div>
+                                                <div class="viewbox-editor-header viewbox-editor-header-with-action">
+                                                    <div class="viewbox-editor-heading">
+                                                        <div class="viewbox-editor-title">Настройки {{viewBox.name}}</div>
+                                                        <div class="viewbox-editor-subtitle">Редактирование открыто внутри списка viewBox</div>
+                                                    </div>
+                                                    <button
+                                                        mat-mini-fab
+                                                        color="primary"
+                                                        type="button"
+                                                        class="viewbox-export-button"
+                                                        (click)="openViewBoxExportPopup(viewBox.id)"
+                                                        matTooltip="Показать готовый текст для выбранного viewBox"
+                                                        matTooltipPosition="left"
+                                                    >
+                                                        <mat-icon>code</mat-icon>
+                                                    </button>
                                                 </div>
 
                                                 <div class="viewbox-form viewbox-editor-form">
@@ -630,6 +643,68 @@
     </div>
 </div>
 
+<div
+    *ngIf="isViewBoxExportPopupOpen && activeViewBox"
+    class="viewbox-export-modal-backdrop"
+    (click)="closeViewBoxExportPopup()"
+>
+    <div
+        class="viewbox-export-modal"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="'Готовый текст для ' + activeViewBox.name"
+        (click)="$event.stopPropagation()"
+    >
+        <div class="viewbox-export-modal-header">
+            <div class="viewbox-export-modal-copy">
+                <div class="viewbox-export-modal-title">Готовый текст для {{activeViewBox.name}}</div>
+                <div class="viewbox-export-modal-subtitle">Данные собраны из текущего выбранного viewBox и его patch</div>
+            </div>
+            <button
+                mat-icon-button
+                type="button"
+                class="viewbox-export-close-button"
+                (click)="closeViewBoxExportPopup()"
+                matTooltip="Закрыть"
+                matTooltipPosition="left"
+            >
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+
+        <textarea
+            class="app-input viewbox-export-textarea"
+            [value]="activeViewBoxExportText"
+            readonly
+        ></textarea>
+
+        <div class="viewbox-export-modal-actions">
+            <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                class="mat-flat-button"
+                (click)="copyActiveViewBoxExportText()"
+            >
+                <mat-icon>content_copy</mat-icon>
+                Копировать
+            </button>
+
+            <div class="viewbox-export-copy-state" *ngIf="isViewBoxExportCopied">
+                Текст скопирован
+            </div>
+
+            <button
+                mat-flat-button
+                type="button"
+                class="mat-flat-button"
+                (click)="closeViewBoxExportPopup()"
+            >
+                Закрыть
+            </button>
+        </div>
+    </div>
+</div>
 
 <app-import (importPath)="openPath($event, '')"></app-import>
 

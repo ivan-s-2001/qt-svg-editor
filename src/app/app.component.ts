@@ -170,6 +170,8 @@ export class AppComponent implements AfterViewInit {
   isLeftPanelOpened = true;
   isContextualMenuOpened = false;
   isEditingImages = false;
+  isViewBoxExportPopupOpen = false;
+  isViewBoxExportCopied = false;
 
   max = Math.max;
   trackByIndex = (idx: number, _: unknown) => idx;
@@ -203,6 +205,13 @@ export class AppComponent implements AfterViewInit {
 
   @HostListener('document:keydown', ['$event']) onKeyDown($event: KeyboardEvent) {
     const tag = $event.target instanceof Element ? $event.target.tagName : null;
+
+    if (this.isViewBoxExportPopupOpen && $event.key === KEYBOARD.KEYS.ESCAPE) {
+      this.closeViewBoxExportPopup();
+      $event.preventDefault();
+      return;
+    }
+
     if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
       if ($event.shiftKey && ($event.metaKey || $event.ctrlKey) && $event.key.toLowerCase() === KEYBOARD.KEYS.UNDO) {
         this.redo();
@@ -344,6 +353,35 @@ export class AppComponent implements AfterViewInit {
 
   get activeViewBoxCenterY(): number {
     return this.activeViewBox ? this.activeViewBox.height / 2 : 0;
+  }
+
+  get activeViewBoxExportText(): string {
+    const activeViewBox = this.activeViewBox;
+    if (!activeViewBox) {
+      return '';
+    }
+
+    const pathD = activeViewBox.patch.rawPath || this._rawPath || '';
+
+    return [
+      `x - ${activeViewBox.x} (@x сейчас для логики)`,
+      `y - ${activeViewBox.y} (@y сейчас для логики)`,
+      `width - ${activeViewBox.width} (@width сейчас для логики)`,
+      `heght - ${activeViewBox.height} (@heght сейчас для логики)`,
+      'param -',
+      '"',
+      '<div style="',
+      '    position:absolute;',
+      '    width:@x;',
+      '    height:@y;',
+      '    box-sizing:border-box;',
+      '  " generated_object>',
+      '    <svg viewBox="0 0 @width @heght" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">',
+      `      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />`,
+      '    </svg>',
+      '  </div>',
+      '"'
+    ].join('\n');
   }
 
   isDraggingViewBoxLabel(viewBoxId: string): boolean {
@@ -978,6 +1016,61 @@ export class AppComponent implements AfterViewInit {
     this.activateViewBox(id);
   }
 
+  openViewBoxExportPopup(viewBoxId: string): void {
+    if (!this.activeViewBox || this.activeViewBox.id !== viewBoxId) {
+      return;
+    }
+
+    this.isViewBoxExportCopied = false;
+    this.isViewBoxExportPopupOpen = true;
+  }
+
+  closeViewBoxExportPopup(): void {
+    this.isViewBoxExportPopupOpen = false;
+    this.isViewBoxExportCopied = false;
+  }
+
+  async copyActiveViewBoxExportText(): Promise<void> {
+    const text = this.activeViewBoxExportText;
+    if (!text) {
+      return;
+    }
+
+    let copied = false;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+
+    if (!copied) {
+      const textarea = this.document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', 'true');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      textarea.style.left = '-9999px';
+      this.document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      try {
+        copied = this.document.execCommand('copy');
+      } catch {
+        copied = false;
+      }
+
+      textarea.remove();
+    }
+
+    this.isViewBoxExportCopied = copied;
+  }
+
   updateViewBoxName(viewBoxId: string, value: string): void {
     const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
     if (!viewBox) {
@@ -1200,6 +1293,7 @@ export class AppComponent implements AfterViewInit {
   private activateViewBox(id: string | null): void {
     const nextActiveId = id && this.viewBoxes.some((viewBox) => viewBox.id === id) ? id : null;
     this.activeViewBoxId = nextActiveId;
+    this.closeViewBoxExportPopup();
 
     if (nextActiveId) {
       this.storage.setActiveViewBoxId(nextActiveId);
