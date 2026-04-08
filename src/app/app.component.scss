@@ -25,11 +25,11 @@
 }
 
 .spacer {
-    height: 20px;
+    height: 12px;
 }
 
 .left-column-wrapper {
-    width: 384px;
+    width: 376px;
     position: relative;
     border-right: 1px solid var(--brand-border);
     background: var(--brand-surface);
@@ -59,24 +59,24 @@
 .left-column-content {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    padding: 14px 14px 24px;
+    gap: 8px;
+    padding: 12px 12px 16px;
 }
 
 
 .menu-group {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .menu-group + .menu-group {
-    padding-top: 6px;
+    padding-top: 4px;
     border-top: 1px solid var(--brand-border);
 }
 
 .menu-group-header {
-    padding: 0 4px;
+    padding: 0 2px;
 }
 
 .menu-group-eyebrow {
@@ -89,30 +89,30 @@
 }
 
 .menu-group-title {
-    margin-top: 6px;
+    margin-top: 4px;
     color: var(--brand-text);
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     line-height: 1.15;
 }
 
 .menu-group-description {
-    margin-top: 6px;
+    margin-top: 4px;
     color: var(--brand-text-muted);
-    font-size: 13px;
-    line-height: 1.45;
+    font-size: 12px;
+    line-height: 1.35;
 }
 
 .panel-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .menu-panel-shell {
     overflow: hidden;
     border: 1px solid var(--brand-border);
-    border-radius: 18px;
+    border-radius: 14px;
     background: var(--brand-surface-raised);
     box-shadow: var(--brand-shadow);
 }
@@ -124,11 +124,11 @@
 .subsection {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-top: 12px;
-    padding: 12px;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 10px;
     border: 1px solid var(--brand-border);
-    border-radius: 14px;
+    border-radius: 12px;
     background: var(--brand-surface-soft);
 }
 
@@ -142,7 +142,7 @@
 
 .subsection-title {
     color: var(--brand-text);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1.35;
 }
@@ -168,7 +168,7 @@
 .left-column .input-block {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     margin: 0;
     position: relative;
 }
@@ -179,7 +179,7 @@
     margin: 0;
     padding: 0;
     color: var(--brand-text-muted);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     line-height: 1.35;
     white-space: normal;
@@ -232,14 +232,14 @@
 }
 
 .left-column .input-block > input {
-    height: 42px;
-    min-height: 42px;
-    padding: 0 12px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 10px;
 }
 
 .left-column .input-block > textarea {
-    min-height: 96px;
-    padding: 12px;
+    min-height: 88px;
+    padding: 10px;
     resize: vertical;
 }
 
@@ -248,10 +248,10 @@
     appearance: textfield;
     -webkit-appearance: none;
     -moz-appearance: textfield;
-    min-height: 42px;
+    min-height: 40px;
     height: 42px;
     line-height: 1.35;
-    font-size: 13px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
     padding: 0 12px;
     background-clip: padding-box;
@@ -274,14 +274,14 @@
 .viewbox-form {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 8px;
     align-items: start;
 }
 
 .camera-precision-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px;
+    gap: 8px;
     align-items: end;
 }
 
@@ -301,7 +301,7 @@
 .camera-checkbox {
     display: flex;
     align-items: center;
-    min-height: 42px;
+    min-height: 40px;
     padding: 0 4px;
 }
 
@@ -309,7 +309,7 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 2px;
@@ -334,16 +334,16 @@
 .operation-card-grid {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .operation-card {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
+    gap: 8px;
     margin-top: 0;
-    padding: 12px;
-    border-radius: 14px;
+    padding: 10px;
+    border-radius: 12px;
     border: 1px solid var(--brand-border);
     background: var(--brand-surface-soft);
     overflow-x: auto;
@@ -351,10 +351,10 @@
 }
 
 .operation-card-title {
-    flex: 0 0 124px;
-    padding-top: 10px;
+    flex: 0 0 112px;
+    padding-top: 9px;
     color: var(--brand-text);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1.35;
 }
@@ -362,7 +362,7 @@
 .operation-inline-row {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 6px;
     flex: 1 1 auto;
     min-width: max-content;
 }
@@ -372,22 +372,22 @@
 }
 
 .operation-input-block {
-    min-width: 118px;
-    width: 118px;
+    min-width: 112px;
+    width: 112px;
 }
 
 .operation-input-wide {
-    min-width: 172px;
-    width: 172px;
+    min-width: 160px;
+    width: 160px;
 }
 
 .operation-input-compact {
-    min-width: 104px;
-    width: 104px;
+    min-width: 96px;
+    width: 96px;
 }
 
 .operation-action-button {
-    min-width: 118px;
+    min-width: 110px;
     align-self: flex-end;
 }
 
@@ -399,7 +399,7 @@
 .path-fit-row {
     display: flex;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
 }
 
@@ -410,7 +410,7 @@
 .hall-actions,
 .viewbox-actions {
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
 }
 
@@ -422,7 +422,7 @@
 .active-viewbox-meta {
     color: var(--brand-text-muted);
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.35;
 }
 
 .hall-error {
@@ -430,14 +430,14 @@
 }
 
 .viewbox-select-hint {
-    margin-top: 2px;
+    margin-top: 0;
 }
 
 .viewbox-list {
-    margin-top: 10px;
+    margin-top: 6px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .viewbox-list-item {
@@ -448,9 +448,9 @@
 
 .viewbox-card {
     cursor: pointer;
-    padding: 14px;
+    padding: 12px;
     border: 1px solid var(--brand-border);
-    border-radius: 16px;
+    border-radius: 14px;
     background: var(--brand-surface-raised);
     box-shadow: var(--brand-shadow-soft);
     transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
@@ -472,7 +472,7 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .viewbox-card-header > :first-child {
@@ -488,13 +488,13 @@
 
 .viewbox-card-title {
     color: var(--brand-text);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     word-break: break-word;
 }
 
 .viewbox-card-subtitle {
-    margin-top: 4px;
+    margin-top: 2px;
     color: var(--brand-text-subtle);
     font-size: 11px;
     line-height: 1.4;
@@ -505,8 +505,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 54px;
-    padding: 3px 10px;
+    min-width: 50px;
+    padding: 2px 8px;
     border-radius: 999px;
     background: rgba(59, 130, 246, 0.12);
     color: var(--brand-primary-strong);
@@ -519,12 +519,12 @@
 .viewbox-card-line {
     color: var(--brand-text-muted);
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.35;
 }
 
 .viewbox-editor-card {
-    padding: 14px;
-    border-radius: 16px;
+    padding: 12px;
+    border-radius: 14px;
     border: 1px solid rgba(59, 130, 246, 0.2);
     background: rgba(59, 130, 246, 0.06);
     box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.08);
@@ -533,13 +533,13 @@
 .viewbox-editor-header {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin-bottom: 12px;
+    gap: 2px;
+    margin-bottom: 8px;
 }
 
 .viewbox-editor-title {
     color: var(--brand-text);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     line-height: 1.35;
 }
@@ -551,13 +551,13 @@
 }
 
 .viewbox-editor-form {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .viewbox-editor-meta-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .viewbox-name-block {
@@ -565,19 +565,19 @@
 }
 
 .command-list-section {
-    gap: 10px;
+    gap: 8px;
 }
 
 .command-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
-    margin-top: 8px;
-    padding: 10px !important;
-    border-radius: 14px;
+    margin-top: 6px;
+    padding: 8px !important;
+    border-radius: 12px;
     border: 1px solid var(--brand-border);
     background: var(--brand-surface-raised);
     box-shadow: var(--brand-shadow-soft);
@@ -586,7 +586,7 @@
 .command-row-values {
     display: flex;
     flex-wrap: nowrap;
-    gap: 8px;
+    gap: 6px;
     flex: 1 1 auto;
     min-width: max-content;
 }
@@ -599,8 +599,8 @@
 
 .command-value-input,
 .command-row .svg-value {
-    width: 62px;
-    min-width: 62px;
+    width: 58px;
+    min-width: 58px;
     margin: 0;
     text-align: left;
     font-size: 12px;
@@ -610,9 +610,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 62px;
-    min-width: 62px;
-    min-height: 42px;
+    width: 58px;
+    min-width: 58px;
+    min-height: 40px;
     border-radius: 12px;
     border: 1px solid var(--brand-border);
     background: var(--brand-surface-soft);
@@ -628,14 +628,14 @@
     align-items: center;
     justify-content: center;
     margin: 0;
-    width: 40px;
-    min-width: 40px;
-    height: 42px;
+    width: 36px;
+    min-width: 36px;
+    height: 40px;
     border: 1px solid rgba(245, 158, 11, 0.28);
     border-radius: 12px;
     background: rgba(245, 158, 11, 0.12);
     color: #b96b00;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1;
     text-align: center;
@@ -664,11 +664,11 @@ div.dragged {
 .left-column-close,
 .left-column-open {
     position: absolute;
-    top: 12px;
+    top: 10px;
     z-index: 10;
     min-width: 0;
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     margin: 0;
     padding: 0;
     border-radius: 12px;
@@ -690,7 +690,7 @@ div.dragged {
 }
 
 .left-column-open {
-    left: 12px;
+    left: 10px;
 }
 
 .drawings {
@@ -715,7 +715,7 @@ div.dragged {
     .scene-top-actions {
         position: absolute;
         right: 12px;
-        top: 12px;
+        top: 10px;
         z-index: 7;
 
         > button {
@@ -738,8 +738,8 @@ div.dragged {
 
     .scene-bottom-actions {
         position: absolute;
-        right: 12px;
-        bottom: 12px;
+        right: 10px;
+        bottom: 10px;
         width: 40px;
         z-index: 7;
 
@@ -773,7 +773,7 @@ div.dragged {
     background: rgba(255, 255, 255, 0.96);
     box-shadow: var(--brand-shadow-soft);
     color: var(--brand-text);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     line-height: 1.2;
     text-align: center;
@@ -1008,7 +1008,7 @@ div.dragged {
     }
 
     .operation-card {
-        gap: 12px;
+        gap: 8px;
     }
 
     .operation-card-title {
@@ -1016,7 +1016,7 @@ div.dragged {
     }
 
     .path-toolbar {
-        gap: 6px;
+        gap: 4px;
     }
 
     .command-row .svg-value,
@@ -1026,3 +1026,4 @@ div.dragged {
         min-width: 56px;
     }
 }
+
