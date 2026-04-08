@@ -137,7 +137,7 @@ function convertParamToSvgParam(param: string, width: number, height: number): s
   }
 
   if (outerHasTransform) {
-    return buildWrapper(width, height, styleMap, svg, innerHtml);
+    return buildWrapper(width, height, styleMap, svg, stripTransformsFromHtmlStyles(innerHtml));
   }
 
   const textStyle = buildOverlayTextStyle(styleMap);
@@ -178,17 +178,6 @@ function buildWrapperStyle(styleMap: StyleMap, width: number, height: number): s
   appendStyleIfExists(style, 'display', styleMap, ['display']);
   appendStyleIfExists(style, 'z-index', styleMap, ['z-index']);
 
-  appendStyleIfExists(style, '-webkit-transform', styleMap, ['-webkit-transform']);
-  appendStyleIfExists(style, '-moz-transform', styleMap, ['-moz-transform']);
-  appendStyleIfExists(style, '-ms-transform', styleMap, ['-ms-transform']);
-  appendStyleIfExists(style, '-o-transform', styleMap, ['-o-transform']);
-  appendStyleIfExists(style, 'transform', styleMap, ['transform']);
-
-  appendStyleIfExists(style, '-webkit-transform-origin', styleMap, ['-webkit-transform-origin']);
-  appendStyleIfExists(style, '-moz-transform-origin', styleMap, ['-moz-transform-origin']);
-  appendStyleIfExists(style, '-ms-transform-origin', styleMap, ['-ms-transform-origin']);
-  appendStyleIfExists(style, '-o-transform-origin', styleMap, ['-o-transform-origin']);
-  appendStyleIfExists(style, 'transform-origin', styleMap, ['transform-origin']);
 
   return style.join(';\n    ') + ';';
 }
@@ -209,7 +198,7 @@ function buildSvgFromStyles(styleMap: StyleMap, width: number, height: number): 
   const parts: string[] = [];
 
   parts.push(
-    `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">`
+    `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="${escapeHtmlAttr(buildSvgStyle(styleMap))}" xmlns="http://www.w3.org/2000/svg">`
   );
 
   if (hasUniformBorder) {
@@ -238,9 +227,53 @@ function buildSvgFromStyles(styleMap: StyleMap, width: number, height: number): 
 
   parts.push('    </svg>');
 
-  return parts.join('
-');
+  return parts.join('\n');
 }
+
+function buildSvgStyle(styleMap: StyleMap): string {
+  const style: string[] = [
+    'position:absolute',
+    'left:0',
+    'top:0',
+    'width:100%',
+    'height:100%',
+    'overflow:visible',
+  ];
+
+  appendStyleIfExists(style, '-webkit-transform', styleMap, ['-webkit-transform']);
+  appendStyleIfExists(style, '-moz-transform', styleMap, ['-moz-transform']);
+  appendStyleIfExists(style, '-ms-transform', styleMap, ['-ms-transform']);
+  appendStyleIfExists(style, '-o-transform', styleMap, ['-o-transform']);
+  appendStyleIfExists(style, 'transform', styleMap, ['transform']);
+
+  return style.join(';') + ';';
+}
+
+function stripTransformsFromHtmlStyles(html: string): string {
+  return html.replace(/style=(['"])([\s\S]*?)\1/gi, (_match, quote: string, styleValue: string) => {
+    const cleaned = stripTransformDeclarations(styleValue);
+    return `style=${quote}${cleaned}${quote}`;
+  });
+}
+
+function stripTransformDeclarations(styleValue: string): string {
+  return styleValue
+    .replace(/(^|;)\s*-webkit-transform\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*-moz-transform\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*-ms-transform\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*-o-transform\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*transform\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*-webkit-transform-origin\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*-moz-transform-origin\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*-ms-transform-origin\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*-o-transform-origin\s*:[^;]*/gi, '$1')
+    .replace(/(^|;)\s*transform-origin\s*:[^;]*/gi, '$1')
+    .replace(/;;+/g, ';')
+    .replace(/^\s*;\s*/, '')
+    .replace(/\s*;\s*$/, '')
+    .trim();
+}
+
 function buildOverlayTextStyle(styleMap: StyleMap): string {
   const keep = [
     'line-height',
@@ -262,16 +295,6 @@ function buildOverlayTextStyle(styleMap: StyleMap): string {
     'display',
     'align-items',
     'justify-content',
-    'transform',
-    '-webkit-transform',
-    '-moz-transform',
-    '-ms-transform',
-    '-o-transform',
-    'transform-origin',
-    '-webkit-transform-origin',
-    '-moz-transform-origin',
-    '-ms-transform-origin',
-    '-o-transform-origin',
   ];
 
   const style: string[] = [
