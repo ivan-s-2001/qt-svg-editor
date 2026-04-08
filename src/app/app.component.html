@@ -668,8 +668,7 @@
         aria-modal="true"
         [attr.aria-label]="'Экспорт для ' + activeViewBox.name"
         (click)="$event.stopPropagation()"
-    >
-        <div class="viewbox-export-modal-header">
+    ><div class="viewbox-export-modal-header">
             <div class="viewbox-export-modal-copy">
                 <div class="viewbox-export-modal-title">SQL экспорт для {{activeViewBox.name}}</div>
                 <div class="viewbox-export-modal-subtitle">SQL для одного выбранного viewBox</div>
@@ -686,47 +685,41 @@
             </button>
         </div>
 
-        <div class="viewbox-export-section">
-            <div class="viewbox-export-section-title">SQL для одного viewBox</div>
-
-            <div class="viewbox-export-hall-id-row">
-                <div class="input-block viewbox-export-hall-id-field">
-                    <label>Введите hall_id</label>
-                    <input
-                        class="app-input"
-                        inputmode="numeric"
-                        [ngModel]="viewBoxExportHallIdValue"
-                        (ngModelChange)="updateViewBoxExportHallId($event)"
-                        placeholder="#new_hall_id#"
-                    >
-                </div>
-            </div>
-
-            <textarea
-                class="app-input viewbox-export-textarea"
-                [value]="activeViewBoxSqlExportText"
-                readonly
-            ></textarea>
-
-            <div class="viewbox-export-modal-actions">
-                <button
-                    mat-flat-button
-                    color="primary"
-                    type="button"
-                    class="mat-flat-button"
-                    (click)="copyActiveViewBoxSqlExportText()"
+        <div class="viewbox-export-hall-id-row">
+            <div class="input-block viewbox-export-hall-id-field">
+                <label>Новый hall_id</label>
+                <input
+                    class="app-input"
+                    inputmode="numeric"
+                    [ngModel]="viewBoxExportHallIdValue"
+                    (ngModelChange)="updateViewBoxExportHallId($event)"
+                    placeholder="#new_hall_id#"
                 >
-                    <mat-icon>content_copy</mat-icon>
-                    Копировать SQL
-                </button>
-
-                <div class="viewbox-export-copy-state" *ngIf="isViewBoxSqlExportCopied">
-                    SQL скопирован
-                </div>
             </div>
         </div>
 
-        <div class="viewbox-export-modal-actions viewbox-export-modal-actions-end">
+        <textarea
+            class="app-input viewbox-export-textarea"
+            [value]="allViewBoxesSqlExportText"
+            readonly
+        ></textarea>
+
+        <div class="viewbox-export-modal-actions">
+            <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                class="mat-flat-button"
+                (click)="copyActiveViewBoxSqlExportText()"
+            >
+                <mat-icon>content_copy</mat-icon>
+                Копировать SQL
+            </button>
+
+            <div class="viewbox-export-copy-state" *ngIf="isAllViewBoxesExportCopied">
+                SQL скопирован
+            </div>
+
             <button
                 mat-flat-button
                 type="button"
