@@ -5,7 +5,8 @@
         >
             <mat-icon>arrow_left</mat-icon>
         </button>
-
+        <div class="left-column" cdk-scrollable>
+            <div class="left-column-content">
 
                 <section class="menu-group">
                     <div class="menu-group-header">
@@ -376,7 +377,14 @@
                                                     </div>
                                                 </ng-container>
                                             </div>
-<div class="subsection subsection-compact">
+
+                                            <button mat-icon-button [matMenuTriggerFor]="appMenu" [matMenuTriggerData]="{item:item, idx:j}" class="more-button command-row-menu">
+                                                <mat-icon svgIcon="more"></mat-icon>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="subsection subsection-compact">
                                         <div class="subsection-title">Операции с patch</div>
 
                                         <div class="operation-card-grid">
@@ -452,11 +460,6 @@
                                                     >Подогнать viewBox</button>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                            <button mat-icon-button [matMenuTriggerFor]="appMenu" [matMenuTriggerData]="{item:item, idx:j}" class="more-button command-row-menu">
-                                                <mat-icon svgIcon="more"></mat-icon>
-                                            </button>
                                         </div>
                                     </div>
                                 </ng-container>
