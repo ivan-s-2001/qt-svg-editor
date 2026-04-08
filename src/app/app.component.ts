@@ -364,23 +364,16 @@ export class AppComponent implements AfterViewInit {
     const pathD = activeViewBox.patch.rawPath || this._rawPath || '';
 
     return [
-      `x - ${activeViewBox.x}`,
-      `y - ${activeViewBox.y}`,
-      `width - ${activeViewBox.width}`,
-      `height - ${activeViewBox.height}`,
-      'param -',
-      '"',
-      '<div style="',
-      '    position:absolute;',
-      `    width: ${activeViewBox.width};`,
-      `    height: ${activeViewBox.height};`,
-      '    box-sizing:border-box;',
-      '  " generated_object>',
-      `    <svg viewBox="0 0 ${activeViewBox.width} ${activeViewBox.height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">`,
-      `      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />`,
-      '    </svg>',
-      '  </div>',
-      '"'
+      `(NULL, #new_hall_id#, ${activeViewBox.x}, ${activeViewBox.y}, ${activeViewBox.width}, ${activeViewBox.height}, 0, '<div style="
+    position:absolute;
+    width:${activeViewBox.width}px;
+    height:${activeViewBox.height}px;
+    box-sizing:border-box;
+  " generated_object>
+    <svg viewBox="0 0 ${activeViewBox.width} ${activeViewBox.height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />
+    </svg>
+  </div>', 1)`
     ].join('\n');
   }
 
