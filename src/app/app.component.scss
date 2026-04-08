@@ -339,8 +339,8 @@
 
 .operation-card {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
+    align-items: flex-end;
+    gap: 10px;
     margin-top: 0;
     padding: 10px;
     border-radius: 12px;
@@ -351,18 +351,19 @@
 }
 
 .operation-card-title {
-    flex: 0 0 112px;
-    padding-top: 9px;
+    flex: 0 0 88px;
+    align-self: center;
     color: var(--brand-text);
     font-size: 12px;
     font-weight: 700;
-    line-height: 1.35;
+    line-height: 1.25;
+    white-space: nowrap;
 }
 
 .operation-inline-row {
     display: flex;
-    align-items: flex-start;
-    gap: 6px;
+    align-items: flex-end;
+    gap: 8px;
     flex: 1 1 auto;
     min-width: max-content;
 }
@@ -372,23 +373,43 @@
 }
 
 .operation-input-block {
-    min-width: 112px;
-    width: 112px;
+    min-width: 88px;
+    width: 88px;
+    gap: 3px;
+}
+
+.operation-input-block > label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.operation-input-block > input {
+    text-align: left;
 }
 
 .operation-input-wide {
-    min-width: 160px;
-    width: 160px;
+    min-width: 110px;
+    width: 110px;
 }
 
 .operation-input-compact {
-    min-width: 96px;
-    width: 96px;
+    min-width: 78px;
+    width: 78px;
 }
 
 .operation-action-button {
-    min-width: 110px;
+    min-width: 96px;
+    width: auto;
     align-self: flex-end;
+    padding-inline: 12px !important;
+    white-space: nowrap;
+}
+
+.operation-action-wide {
+    min-width: 152px;
 }
 
 .operation-card-accent {
@@ -571,12 +592,12 @@
 .command-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
-    margin-top: 6px;
-    padding: 8px !important;
+    margin-top: 4px;
+    padding: 6px !important;
     border-radius: 12px;
     border: 1px solid var(--brand-border);
     background: var(--brand-surface-raised);
@@ -586,7 +607,7 @@
 .command-row-values {
     display: flex;
     flex-wrap: nowrap;
-    gap: 6px;
+    gap: 4px;
     flex: 1 1 auto;
     min-width: max-content;
 }
@@ -599,8 +620,9 @@
 
 .command-value-input,
 .command-row .svg-value {
-    width: 58px;
-    min-width: 58px;
+    width: 64px;
+    min-width: 64px;
+    height: 36px;
     margin: 0;
     text-align: left;
     font-size: 12px;
@@ -610,9 +632,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 58px;
-    min-width: 58px;
-    min-height: 40px;
+    width: 52px;
+    min-width: 52px;
+    min-height: 36px;
     border-radius: 12px;
     border: 1px solid var(--brand-border);
     background: var(--brand-surface-soft);
@@ -628,11 +650,11 @@
     align-items: center;
     justify-content: center;
     margin: 0;
-    width: 36px;
-    min-width: 36px;
-    height: 40px;
+    width: 32px;
+    min-width: 32px;
+    height: 36px;
     border: 1px solid rgba(245, 158, 11, 0.28);
-    border-radius: 12px;
+    border-radius: 10px;
     background: rgba(245, 158, 11, 0.12);
     color: #b96b00;
     font-size: 12px;
@@ -968,9 +990,9 @@ div.dragged {
 }
 
 .command-row .more-button {
-    --mdc-icon-button-state-layer-size: 30px;
-    width: 30px;
-    height: 30px;
+    --mdc-icon-button-state-layer-size: 28px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     line-height: 30px;
     margin: 0;
@@ -981,8 +1003,8 @@ div.dragged {
 
 .command-row .more-button mat-icon,
 .command-row .more-button svg {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
 }
 
 @media screen and (max-width: 500px) {
@@ -1012,7 +1034,7 @@ div.dragged {
     }
 
     .operation-card-title {
-        flex-basis: 112px;
+        flex-basis: 88px;
     }
 
     .path-toolbar {
@@ -1020,10 +1042,14 @@ div.dragged {
     }
 
     .command-row .svg-value,
-    .command-value-input,
+    .command-value-input {
+        width: 58px;
+        min-width: 58px;
+    }
+
     .command-checkbox {
-        width: 56px;
-        min-width: 56px;
+        width: 50px;
+        min-width: 50px;
     }
 }
 

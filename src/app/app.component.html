@@ -23,7 +23,7 @@
                                                 [(ngModel)]="hallFragment"
                                                 class="app-input"
                                                 style="height:160px;"
-                                                placeholder="Вставьте тег <body> из view_old"
+                                                placeholder="Вставьте фрагмент с div.hall"
                                             ></textarea>
                                         </div>
                                     </div>
@@ -324,74 +324,74 @@
                                         <div class="operation-card-grid">
                                             <div class="operation-card">
                                                 <div class="operation-card-title">Масштаб</div>
-                                                <div class="row path-operations-grid">
-                                                    <div class="input-block">
-                                                        <label>Масштаб X</label>
+                                                <div class="operation-inline-row">
+                                                    <div class="input-block operation-input-block operation-input-compact">
+                                                        <label>X</label>
                                                         <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="scaleX">
                                                     </div>
-                                                    <div class="input-block">
-                                                        <label>Масштаб Y</label>
+                                                    <div class="input-block operation-input-block operation-input-compact">
+                                                        <label>Y</label>
                                                         <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="scaleY">
                                                     </div>
-                                                    <button mat-flat-button (click)="scale(scaleX, scaleY)" matTooltip="Масштабировать viewBox и patch" matTooltipPosition="right" class="mat-flat-button">Масштаб</button>
+                                                    <button mat-flat-button (click)="scale(scaleX, scaleY)" matTooltip="Масштабировать viewBox и patch" matTooltipPosition="right" class="mat-flat-button operation-action-button">Масштаб</button>
                                                 </div>
                                             </div>
 
                                             <div class="operation-card">
                                                 <div class="operation-card-title">Сдвиг</div>
-                                                <div class="row path-operations-grid">
-                                                    <div class="input-block">
-                                                        <label>Сдвиг X</label>
+                                                <div class="operation-inline-row">
+                                                    <div class="input-block operation-input-block operation-input-compact">
+                                                        <label>X</label>
                                                         <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateX">
                                                     </div>
-                                                    <div class="input-block">
-                                                        <label>Сдвиг Y</label>
+                                                    <div class="input-block operation-input-block operation-input-compact">
+                                                        <label>Y</label>
                                                         <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateY">
                                                     </div>
-                                                    <button mat-flat-button (click)="translate(translateX, translateY)" matTooltip="Сместить viewBox по подложке" matTooltipPosition="right" class="mat-flat-button">Сдвиг</button>
+                                                    <button mat-flat-button (click)="translate(translateX, translateY)" matTooltip="Сместить viewBox по подложке" matTooltipPosition="right" class="mat-flat-button operation-action-button">Сдвиг</button>
                                                 </div>
                                             </div>
 
                                             <div class="operation-card">
                                                 <div class="operation-card-title">Поворот</div>
-                                                <div class="row path-operations-grid4">
-                                                    <div class="input-block">
+                                                <div class="operation-inline-row">
+                                                    <div class="input-block operation-input-block operation-input-compact">
                                                         <label>Центр X</label>
                                                         <input type="number" step="0.1" class="app-input" appFormatter [numberValue]="activeViewBoxCenterX" disabled>
                                                     </div>
-                                                    <div class="input-block">
+                                                    <div class="input-block operation-input-block operation-input-compact">
                                                         <label>Центр Y</label>
                                                         <input type="number" step="0.1" class="app-input" appFormatter [numberValue]="activeViewBoxCenterY" disabled>
                                                     </div>
-                                                    <div class="input-block path-operations-full-width">
-                                                        <label>Угол (°)</label>
+                                                    <div class="input-block operation-input-block operation-input-wide">
+                                                        <label>Угол</label>
                                                         <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="rotateAngle">
                                                     </div>
-                                                    <button mat-flat-button (click)="rotate(rotateAngle)" matTooltip="Повернуть patch вокруг центра viewBox" matTooltipPosition="right" class="mat-flat-button">Поворот</button>
+                                                    <button mat-flat-button (click)="rotate(rotateAngle)" matTooltip="Повернуть patch вокруг центра viewBox" matTooltipPosition="right" class="mat-flat-button operation-action-button">Повернуть</button>
                                                 </div>
                                             </div>
 
                                             <div class="operation-card">
                                                 <div class="operation-card-title">Округление</div>
-                                                <div class="row path-operations-grid">
-                                                    <div class="input-block path-operations-full-width">
-                                                        <label>Знаков после запятой</label>
+                                                <div class="operation-inline-row">
+                                                    <div class="input-block operation-input-block operation-input-wide">
+                                                        <label>Знаков</label>
                                                         <input type="number" step="1" min="0" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals">
                                                     </div>
-                                                    <button mat-flat-button (click)="roundValues(roundValuesDecimals)" matTooltip="Округлить значения" matTooltipPosition="right" class="mat-flat-button">Округлить</button>
+                                                    <button mat-flat-button (click)="roundValues(roundValuesDecimals)" matTooltip="Округлить значения" matTooltipPosition="right" class="mat-flat-button operation-action-button">Округлить</button>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div class="operation-card operation-card-accent">
-                                            <div class="operation-card-title">Подгонка контейнера</div>
-                                            <div class="row path-fit-row">
+                                            <div class="operation-card-title">Подгонка</div>
+                                            <div class="operation-inline-row">
                                                 <button
                                                     mat-flat-button
                                                     (click)="fitViewBoxToPatch()"
                                                     matTooltip="Подогнать viewBox по границам patch"
                                                     matTooltipPosition="right"
-                                                    class="mat-flat-button"
+                                                    class="mat-flat-button operation-action-button operation-action-wide"
                                                 >Подогнать viewBox</button>
                                             </div>
                                         </div>
