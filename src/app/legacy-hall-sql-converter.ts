@@ -35,7 +35,7 @@ type RadiusMap = {
   bl: RadiusCorner;
 };
 
-export function convertLegacyHallInsertSqlToUpdateSql(
+export function convertPlaceObjInsertSqlToUpdates(
   sql: string,
   options: LegacyHallConvertOptions,
 ): string {
@@ -184,44 +184,40 @@ function buildWrapperStyle(styleMap: StyleMap, width: number, height: number): s
 function buildSvgFromStyles(styleMap: StyleMap, width: number, height: number): string {
   const fill = extractFigureFill(styleMap);
   const borders = parseBorders(styleMap);
-
   const radius = parseBorderRadius(
-    pickStyleValue(styleMap, [
-      'border-radius',
-      '-webkit-border-radius',
-      '-moz-border-radius',
-      '-ms-border-radius',
-    ]) || '',
+    pickStyleValue(styleMap, ['border-radius', '-webkit-border-radius', '-moz-border-radius', '-ms-border-radius']) || '',
     width,
-    height
+    height,
   );
 
-  const hasUniformBorder =
-    allBordersEqual(borders) &&
-    borders.top.width > 0 &&
-    borders.top.style.toLowerCase() !== 'none';
+  const fillPathD = roundedRectPath(0, 0, width, height, radius);
+  const parts: string[] = [];
 
-  const strokeWidth = hasUniformBorder ? borders.top.width : 0;
-  const strokeColor = hasUniformBorder ? borders.top.color : 'none';
+  parts.push(
+    `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">`
+  );
 
-  // если border общий, path строим сразу под него
-  const pathD = hasUniformBorder
-    ? roundedRectPath(
-        strokeWidth / 2,
-        strokeWidth / 2,
-        width - strokeWidth,
-        height - strokeWidth,
-        insetRadius(radius, strokeWidth / 2)
-      )
-    : roundedRectPath(0, 0, width, height, radius);
+  if (!isTransparentLike(fill)) {
+    parts.push(`      <path d="${fillPathD}" fill="${escapeHtmlAttr(fill)}" stroke="none"></path>`);
+  }
 
-  return [
-    `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">`,
-    `      <path d="${pathD}" fill="${escapeHtmlAttr(fill)}" stroke="${escapeHtmlAttr(strokeColor)}" stroke-width="${trimFloat(strokeWidth)}" />`,
-    `    </svg>`,
-  ].join('\n');
+  if (allBordersEqual(borders) && borders.top.width > 0 && borders.top.style.toLowerCase() !== 'none') {
+    const bw = borders.top.width;
+    const bc = borders.top.color;
+    const borderRadius = insetRadius(radius, bw / 2);
+    const borderPathD = roundedRectPath(bw / 2, bw / 2, width - bw, height - bw, borderRadius);
+
+    parts.push(
+      `      <path d="${borderPathD}" fill="none" stroke="${escapeHtmlAttr(bc)}" stroke-width="${trimFloat(bw)}"></path>`
+    );
+  } else {
+    parts.push(...buildPerSideBorderSvg(borders, width, height, radius));
+  }
+
+  parts.push('    </svg>');
+
+  return parts.join('\n');
 }
-
 
 function buildOverlayTextStyle(styleMap: StyleMap): string {
   const keep = [
@@ -314,25 +310,11 @@ function buildPerSideBorderSvg(borders: Borders, width: number, height: number, 
   return svg;
 }
 
-function allBordersEqual(borders: {
-  top: { width: number; style: string; color: string };
-  right: { width: number; style: string; color: string };
-  bottom: { width: number; style: string; color: string };
-  left: { width: number; style: string; color: string };
-}): boolean {
+function allBordersEqual(borders: Borders): boolean {
   const t = borders.top;
-
-  return (
-    t.width === borders.right.width &&
-    t.width === borders.bottom.width &&
-    t.width === borders.left.width &&
-    t.style === borders.right.style &&
-    t.style === borders.bottom.style &&
-    t.style === borders.left.style &&
-    t.color === borders.right.color &&
-    t.color === borders.bottom.color &&
-    t.color === borders.left.color
-  );
+  return areBordersSame(t, borders.right)
+    && areBordersSame(t, borders.bottom)
+    && areBordersSame(t, borders.left);
 }
 
 function areBordersSame(a: BorderSide, b: BorderSide): boolean {
@@ -429,7 +411,7 @@ function normalizeCornerRadii(radius: RadiusMap, w: number, h: number): RadiusMa
 
 function hasFigureStyles(styleMap: StyleMap): boolean {
   const bgColor = (styleMap['background-color'] || '').trim().toLowerCase();
-  const bg = (styleMap.background || '').trim().toLowerCase();
+  const bg = (styleMap['background'] || '').trim().toLowerCase();
 
   if (bgColor && bgColor !== 'transparent' && bgColor !== 'none') {
     return true;
@@ -946,3 +928,6 @@ function trimFloat(value: number): string {
   const text = value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
   return text === '' ? '0' : text;
 }
+
+
+export const convertLegacyHallInsertSqlToUpdateSql = convertPlaceObjInsertSqlToUpdates;
