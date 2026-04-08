@@ -242,3 +242,34 @@ button.mat-mdc-icon-button.more-button {
 .mat-mdc-form-field.mat-focused .mat-mdc-form-field-focus-overlay {
     opacity: 0.08;
 }
+
+.viewbox-frame-label.dragging {
+    top: -46px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3px;
+    min-height: 44px;
+    max-width: min(240px, calc(100vw - 24px));
+    padding-top: 6px;
+    padding-bottom: 7px;
+    white-space: normal;
+}
+
+.viewbox-frame-label.dragging .viewbox-frame-label-text {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.viewbox-frame-label.dragging .viewbox-frame-label-coordinates {
+    display: block;
+    max-width: 100%;
+    margin: 0;
+    line-height: 1.15;
+    white-space: nowrap;
+}
