@@ -1513,7 +1513,7 @@ export class AppComponent implements AfterViewInit {
   private buildViewBoxSqlRow(viewBox: ViewBoxEntity, hallId: string): string {
     const param = this.escapeSqlString(this.buildViewBoxParamMarkup(viewBox));
 
-    return `(NULL, ${hallId}, ${viewBox.x}+0, ${viewBox.y}+0, ${viewBox.width}, ${viewBox.height}, 0, '${param}', 1)`;
+    return `(NULL, ${hallId}, ${viewBox.x}, ${viewBox.y}, ${viewBox.width}, ${viewBox.height}, 0, '${param}', 1)`;
   }
 
   private buildViewBoxParamMarkup(viewBox: ViewBoxEntity): string {
