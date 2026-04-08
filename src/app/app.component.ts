@@ -1497,6 +1497,7 @@ export class AppComponent implements AfterViewInit {
           transform-origin: top left;
           width: ${width}px;
           height: ${height}px;
+          background: #ffffff;
         }
 
         .hall,
