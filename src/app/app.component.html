@@ -94,7 +94,7 @@
                                     <div class="row camera-precision-row">
                                         <mat-checkbox [(ngModel)]="cfg.snapToGrid" class="camera-checkbox">Привязка к шагу</mat-checkbox>
                                         <div class="input-block" matTooltip="Сколько знаков оставлять при перемещении точки" matTooltipPosition="right" [matTooltipDisabled]="cfg.snapToGrid" [ngClass]="{'disabled': cfg.snapToGrid }">
-                                            <label>Точность цифры после запятой</label>
+                                            <label>Точность точек</label>
                                             <input type="number" step="1" min="1" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="cfg.decimalPrecision" [disabled]="cfg.snapToGrid">
                                         </div>
                                     </div>
@@ -448,6 +448,14 @@
                                             <div class="operation-card operation-card-inline">
                                                 <div class="operation-line operation-line-rotate">
                                                     <div class="operation-name">Поворот</div>
+                                                    <div class="input-block operation-field operation-field-readonly">
+                                                        <label>CX</label>
+                                                        <input type="number" step="0.1" class="app-input" appFormatter [numberValue]="activeViewBoxCenterX" disabled>
+                                                    </div>
+                                                    <div class="input-block operation-field operation-field-readonly">
+                                                        <label>CY</label>
+                                                        <input type="number" step="0.1" class="app-input" appFormatter [numberValue]="activeViewBoxCenterY" disabled>
+                                                    </div>
                                                     <div class="input-block operation-field">
                                                         <label>Угол</label>
                                                         <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="rotateAngle">
@@ -458,9 +466,8 @@
 
                                             <div class="operation-card operation-card-inline">
                                                 <div class="operation-line">
-                                                    <div class="operation-name">Округление</div>
                                                     <div class="input-block operation-field operation-field-wide">
-                                                        <label>Кол-во знаков после запятой в пути</label>
+                                                        <label>Знаки</label>
                                                         <input type="number" step="1" min="0" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals">
                                                     </div>
                                                     <button mat-flat-button (click)="roundValues(roundValuesDecimals)" matTooltip="Округлить все значения до указанного количества знаков" matTooltipPosition="right" class="mat-flat-button operation-button">Применить</button>
@@ -632,7 +639,13 @@
                             [class.dragging]="isDraggingViewBoxLabel(viewBox.id)"
                             (pointerdown)="startViewBoxDrag(viewBox.id, $event)"
                             [title]="viewBox.name"
-                        >{{viewBox.name}}</div>
+                        >
+                            <span class="viewbox-frame-label-text">{{viewBox.name}}</span>
+                            <span
+                                *ngIf="isDraggingViewBoxLabel(viewBox.id)"
+                                class="viewbox-frame-label-coordinates"
+                            >[{{viewBox.x}}, {{viewBox.y}}]</span>
+                        </div>
 
                         <svg
                             *ngIf="viewBox.patch.rawPath && viewBox.id !== activeViewBoxId"
@@ -658,12 +671,13 @@
         class="viewbox-export-modal"
         role="dialog"
         aria-modal="true"
-        [attr.aria-label]="'Экспорт для ' + activeViewBox.name"
+        [attr.aria-label]="'SQL экспорт для ' + activeViewBox.name"
         (click)="$event.stopPropagation()"
-    ><div class="viewbox-export-modal-header">
+    >
+        <div class="viewbox-export-modal-header">
             <div class="viewbox-export-modal-copy">
                 <div class="viewbox-export-modal-title">SQL экспорт для {{activeViewBox.name}}</div>
-                <div class="viewbox-export-modal-subtitle">SQL для одного выбранного viewBox</div>
+                <div class="viewbox-export-modal-subtitle">Один INSERT VALUES для выбранного viewBox</div>
             </div>
             <button
                 mat-icon-button
@@ -679,8 +693,6 @@
 
         <div class="viewbox-export-hall-id-row">
             <div class="input-block viewbox-export-hall-id-field">
-                <label>Введите hall_id
-</label>
                 <input
                     class="app-input"
                     inputmode="numeric"
@@ -756,8 +768,6 @@
 
         <div class="viewbox-export-hall-id-row">
             <div class="input-block viewbox-export-hall-id-field">
-                <label>Введите hall_id
-</label>
                 <input
                     class="app-input"
                     inputmode="numeric"

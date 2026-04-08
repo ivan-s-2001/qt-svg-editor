@@ -404,8 +404,7 @@ export class AppComponent implements AfterViewInit {
       return '';
     }
 
-    const hallId = this.normalizeHallIdLiteral(this.viewBoxExportHallIdValue);
-    return this.buildSingleViewBoxSqlRow(activeViewBox, hallId);
+    return this.buildViewBoxesSqlInsert([activeViewBox], this.viewBoxExportHallIdValue);
   }
 
   get allViewBoxesSqlExportText(): string {
@@ -1134,7 +1133,6 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
-    this.activateViewBox(viewBoxId);
     this.canvas?.stopDrag();
     this.viewBoxDrag = {
       viewBoxId,
@@ -1505,12 +1503,6 @@ export class AppComponent implements AfterViewInit {
     ].join('\n');
   }
 
-  private buildSingleViewBoxSqlRow(viewBox: ViewBoxEntity, hallId: string): string {
-    const param = this.escapeSqlString(this.buildViewBoxParamMarkup(viewBox));
-
-    return `(NULL, ${hallId}, ${viewBox.x}, ${viewBox.y}, ${viewBox.width}, ${viewBox.height}, 0, '${param}', 1)`;
-  }
-
   private buildViewBoxSqlRow(viewBox: ViewBoxEntity, hallId: string): string {
     const param = this.escapeSqlString(this.buildViewBoxParamMarkup(viewBox));
 
@@ -1536,7 +1528,8 @@ export class AppComponent implements AfterViewInit {
 
   private escapeSqlString(value: string): string {
     return value
-      .replace(/\r/g, '')
+      .replace(/\r/g, '\\r')
+      .replace(/\n/g, '\\n')
       .replace(/'/g, "''");
   }
 

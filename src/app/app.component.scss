@@ -947,7 +947,10 @@ div.dragged {
     position: absolute;
     left: 0;
     top: -28px;
-    max-width: min(100%, 260px);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: min(100%, 360px);
     min-height: 28px;
     padding: 6px 10px;
     border-radius: 8px 8px 0 0;
@@ -956,8 +959,6 @@ div.dragged {
     font-size: 11px;
     line-height: 1.2;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     cursor: grab;
     pointer-events: auto;
     user-select: none;
@@ -965,6 +966,23 @@ div.dragged {
     font-weight: 600;
     border: 1px solid rgba(91, 91, 91, 0.2);
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+}
+
+.viewbox-frame-label-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.viewbox-frame-label-coordinates {
+    flex: 0 0 auto;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.08);
+    color: inherit;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
 }
 
 .viewbox-frame-label.dragging {
