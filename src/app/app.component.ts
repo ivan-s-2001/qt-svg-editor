@@ -15,6 +15,7 @@ import { reversePath } from '../lib/reverse-path';
 import { optimizePath } from '../lib/optimize-path';
 import { changePathOrigin } from 'src/lib/change-path-origin';
 import { KEYBOARD } from './constants/keyboard.const';
+import { convertPlaceObjInsertSqlToUpdates } from './legacy-hall-sql-converter';
 
 export const kDefaultPath = `M 4 8 L 10 1 L 13 0 L 12 3 L 5 9 C 6 10 6 11 7 10 C 7 11 8 12 7 12 A 1.42 1.42 0 0 1 6 13 `
 + `A 5 5 0 0 0 4 10 Q 3.5 9.9 3.5 10.5 T 2 11.8 T 1.2 11 T 2.5 9.5 T 3 9 A 5 5 90 0 0 0 7 A 1.42 1.42 0 0 1 1 6 `
@@ -177,6 +178,10 @@ export class AppComponent implements AfterViewInit {
   isAllViewBoxesExportCopied = false;
   viewBoxExportHallIdValue = '';
   allViewBoxesExportHallIdValue = '';
+  isLegacyHallConverterOpen = false;
+  isLegacyHallSqlCopied = false;
+  legacyHallConverterInputSql = '';
+  legacyHallConverterHallIdValue = '';
 
   max = Math.max;
   trackByIndex = (idx: number, _: unknown) => idx;
@@ -212,6 +217,12 @@ export class AppComponent implements AfterViewInit {
     const tag = $event.target instanceof Element ? $event.target.tagName : null;
 
     if ($event.key === KEYBOARD.KEYS.ESCAPE) {
+      if (this.isLegacyHallConverterOpen) {
+        this.closeLegacyHallConverter();
+        $event.preventDefault();
+        return;
+      }
+
       if (this.isViewBoxExportPopupOpen) {
         this.closeViewBoxExportPopup();
         $event.preventDefault();
@@ -368,9 +379,6 @@ export class AppComponent implements AfterViewInit {
     return this.activeViewBox ? this.activeViewBox.height / 2 : 0;
   }
 
-
-
-
   get activeViewBoxSqlExportText(): string {
     const activeViewBox = this.activeViewBox;
     if (!activeViewBox) {
@@ -382,6 +390,13 @@ export class AppComponent implements AfterViewInit {
 
   get allViewBoxesSqlExportText(): string {
     return this.buildViewBoxesSqlInsert(this.viewBoxes, this.allViewBoxesExportHallIdValue);
+  }
+
+  get legacyHallSqlUpdateText(): string {
+    return convertPlaceObjInsertSqlToUpdates(
+      this.legacyHallConverterInputSql,
+      this.legacyHallConverterHallIdValue
+    );
   }
 
   isDraggingViewBoxLabel(viewBoxId: string): boolean {
@@ -1032,6 +1047,17 @@ export class AppComponent implements AfterViewInit {
     this.isViewBoxSqlExportCopied = false;
   }
 
+  openLegacyHallConverter(): void {
+    this.closeViewBoxExportPopup();
+    this.closeAllViewBoxesExportPopup();
+    this.isLegacyHallSqlCopied = false;
+    this.isLegacyHallConverterOpen = true;
+  }
+
+  closeLegacyHallConverter(): void {
+    this.isLegacyHallConverterOpen = false;
+    this.isLegacyHallSqlCopied = false;
+  }
 
   updateViewBoxExportHallId(value: string): void {
     this.viewBoxExportHallIdValue = value;
@@ -1041,6 +1067,16 @@ export class AppComponent implements AfterViewInit {
   updateAllViewBoxesExportHallId(value: string): void {
     this.allViewBoxesExportHallIdValue = value;
     this.isAllViewBoxesExportCopied = false;
+  }
+
+  updateLegacyHallConverterHallId(value: string): void {
+    this.legacyHallConverterHallIdValue = value;
+    this.isLegacyHallSqlCopied = false;
+  }
+
+  updateLegacyHallConverterInputSql(value: string): void {
+    this.legacyHallConverterInputSql = value;
+    this.isLegacyHallSqlCopied = false;
   }
 
   async copyActiveViewBoxSqlExportText(): Promise<void> {
@@ -1073,6 +1109,15 @@ export class AppComponent implements AfterViewInit {
     }
 
     this.isAllViewBoxesExportCopied = await this.copyTextToClipboard(text);
+  }
+
+  async copyLegacyHallSqlUpdateText(): Promise<void> {
+    const text = this.legacyHallSqlUpdateText;
+    if (!text) {
+      return;
+    }
+
+    this.isLegacyHallSqlCopied = await this.copyTextToClipboard(text);
   }
 
   updateViewBoxName(viewBoxId: string, value: string): void {
@@ -1443,7 +1488,6 @@ export class AppComponent implements AfterViewInit {
       this.persistViewBoxes();
     }
   }
-
 
   private normalizeHallIdLiteral(value: string): string {
     const trimmed = value.trim();
