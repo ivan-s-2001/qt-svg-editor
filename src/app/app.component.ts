@@ -172,6 +172,11 @@ export class AppComponent implements AfterViewInit {
   isEditingImages = false;
   isViewBoxExportPopupOpen = false;
   isViewBoxExportCopied = false;
+  isViewBoxSqlExportCopied = false;
+  isAllViewBoxesExportPopupOpen = false;
+  isAllViewBoxesExportCopied = false;
+  viewBoxExportHallIdValue = '';
+  allViewBoxesExportHallIdValue = '';
 
   max = Math.max;
   trackByIndex = (idx: number, _: unknown) => idx;
@@ -206,10 +211,18 @@ export class AppComponent implements AfterViewInit {
   @HostListener('document:keydown', ['$event']) onKeyDown($event: KeyboardEvent) {
     const tag = $event.target instanceof Element ? $event.target.tagName : null;
 
-    if (this.isViewBoxExportPopupOpen && $event.key === KEYBOARD.KEYS.ESCAPE) {
-      this.closeViewBoxExportPopup();
-      $event.preventDefault();
-      return;
+    if ($event.key === KEYBOARD.KEYS.ESCAPE) {
+      if (this.isViewBoxExportPopupOpen) {
+        this.closeViewBoxExportPopup();
+        $event.preventDefault();
+        return;
+      }
+
+      if (this.isAllViewBoxesExportPopupOpen) {
+        this.closeAllViewBoxesExportPopup();
+        $event.preventDefault();
+        return;
+      }
     }
 
     if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
