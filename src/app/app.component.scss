@@ -699,7 +699,7 @@ div.dragged {
     align-self: stretch;
     position: relative;
     overflow: hidden;
-    background: #efefef;
+    background: var(--brand-surface-muted);
 
     &:hover .add-button,
     .add-button.opened {
@@ -760,21 +760,28 @@ div.dragged {
 .cursor-position,
 .hover-position {
     position: absolute;
-    left: 12px;
-    bottom: 12px;
-    z-index: 7;
-    padding: 7px 11px;
-    border-radius: 10px;
+    top: 14px;
+    left: 50%;
+    bottom: auto;
+    transform: translateX(-50%);
+    z-index: 8;
+    min-width: max-content;
+    max-width: calc(100% - 200px);
+    padding: 8px 12px;
+    border-radius: 12px;
     border: 1px solid var(--brand-border);
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(255, 255, 255, 0.96);
     box-shadow: var(--brand-shadow-soft);
     color: var(--brand-text);
     font-size: 12px;
-    line-height: 1;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    pointer-events: none;
 }
 
 .hover-position {
-    bottom: 48px;
+    top: 56px;
 }
 
 .hall-workspace-viewport,
@@ -901,6 +908,18 @@ div.dragged {
 
 .left-column :is(button.mat-flat-button, button.mat-raised-button, button.mat-mdc-mini-fab, button.mat-mdc-icon-button) {
     transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.left-column :is(button.mat-flat-button, button.mat-raised-button, button.mat-mdc-mini-fab, button.mat-mdc-icon-button) .mdc-button__label,
+.left-column :is(button.mat-flat-button, button.mat-raised-button, button.mat-mdc-mini-fab, button.mat-mdc-icon-button) .mat-icon,
+.left-column :is(button.mat-flat-button, button.mat-raised-button, button.mat-mdc-mini-fab, button.mat-mdc-icon-button) svg {
+    color: inherit;
+    fill: currentColor;
+}
+
+.left-column .mdc-label,
+.left-column .mat-mdc-checkbox label {
+    color: var(--brand-text-muted);
 }
 
 .left-column :is(button.mat-flat-button, button.mat-raised-button):not([disabled]) {
