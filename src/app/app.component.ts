@@ -368,34 +368,7 @@ export class AppComponent implements AfterViewInit {
     return this.activeViewBox ? this.activeViewBox.height / 2 : 0;
   }
 
-  get activeViewBoxExportText(): string {
-    const activeViewBox = this.activeViewBox;
-    if (!activeViewBox) {
-      return '';
-    }
 
-    const pathD = activeViewBox.patch.rawPath || this._rawPath || '';
-
-    return [
-      `x - ${activeViewBox.x} (@x сейчас для логики)`,
-      `y - ${activeViewBox.y} (@y сейчас для логики)`,
-      `width - ${activeViewBox.width} (@width сейчас для логики)`,
-      `heght - ${activeViewBox.height} (@heght сейчас для логики)`,
-      'param -',
-      '"',
-      '<div style="',
-      '    position:absolute;',
-      '    width:@x;',
-      '    height:@y;',
-      '    box-sizing:border-box;',
-      '  " generated_object>',
-      '    <svg viewBox="0 0 @width @heght" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">',
-      `      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />`,
-      '    </svg>',
-      '  </div>',
-      '"'
-    ].join('\n');
-  }
 
 
   get activeViewBoxSqlExportText(): string {
@@ -1059,14 +1032,6 @@ export class AppComponent implements AfterViewInit {
     this.isViewBoxSqlExportCopied = false;
   }
 
-  async copyActiveViewBoxExportText(): Promise<void> {
-    const text = this.activeViewBoxExportText;
-    if (!text) {
-      return;
-    }
-
-    this.isViewBoxExportCopied = await this.copyTextToClipboard(text);
-  }
 
   updateViewBoxExportHallId(value: string): void {
     this.viewBoxExportHallIdValue = value;
@@ -1499,7 +1464,7 @@ export class AppComponent implements AfterViewInit {
     const rows = viewBoxes.map((viewBox) => this.buildViewBoxSqlRow(viewBox, hallId));
 
     return [
-      'INSERT INTO `place` (`id`, `hall_id`, `stool_id`, `x`, `y`, `block`, `series`, `place`, `disabled`) VALUES',
+      'INSERT INTO place_obj (id, hall_id, x, y, width, height, type, param, in_front) VALUES',
       rows.map((row, index) => `${row}${index < rows.length - 1 ? ',' : ';'}`).join('\n')
     ].join('\n');
   }
