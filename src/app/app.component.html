@@ -342,87 +342,8 @@
                                         </div>
                                     </div>
 
-                                    <div class="subsection subsection-compact">
-                                        <div class="subsection-title">Операции с patch</div>
-
-                                        <div class="operation-card-grid">
-                                            <div class="operation-card">
-                                                <div class="operation-card-title">Масштаб</div>
-                                                <div class="row path-operations-grid">
-                                                    <div class="input-block">
-                                                        <label>Масштаб X</label>
-                                                        <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="scaleX">
-                                                    </div>
-                                                    <div class="input-block">
-                                                        <label>Масштаб Y</label>
-                                                        <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="scaleY">
-                                                    </div>
-                                                    <button mat-flat-button (click)="scale(scaleX, scaleY)" matTooltip="Масштабировать активный viewBox вместе с patch" matTooltipPosition="right" class="mat-flat-button">Масштаб</button>
-                                                </div>
-                                            </div>
-
-                                            <div class="operation-card">
-                                                <div class="operation-card-title">Сдвиг</div>
-                                                <div class="row path-operations-grid">
-                                                    <div class="input-block">
-                                                        <label>Сдвиг X</label>
-                                                        <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateX">
-                                                    </div>
-                                                    <div class="input-block">
-                                                        <label>Сдвиг Y</label>
-                                                        <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateY">
-                                                    </div>
-                                                    <button mat-flat-button (click)="translate(translateX, translateY)" matTooltip="Сместить активный viewBox по подложке" matTooltipPosition="right" class="mat-flat-button">Сдвиг</button>
-                                                </div>
-                                            </div>
-
-                                            <div class="operation-card">
-                                                <div class="operation-card-title">Поворот</div>
-                                                <div class="row path-operations-grid4">
-                                                    <div class="input-block">
-                                                        <label>Центр X</label>
-                                                        <input type="number" step="0.1" class="app-input" appFormatter [numberValue]="activeViewBoxCenterX" disabled>
-                                                    </div>
-                                                    <div class="input-block">
-                                                        <label>Центр Y</label>
-                                                        <input type="number" step="0.1" class="app-input" appFormatter [numberValue]="activeViewBoxCenterY" disabled>
-                                                    </div>
-                                                    <div class="input-block path-operations-full-width">
-                                                        <label>Угол (°)</label>
-                                                        <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="rotateAngle">
-                                                    </div>
-                                                    <button mat-flat-button (click)="rotate(rotateAngle)" matTooltip="Повернуть patch вокруг центра viewBox и подогнать контейнер под результат" matTooltipPosition="right" class="mat-flat-button">Поворот</button>
-                                                </div>
-                                            </div>
-
-                                            <div class="operation-card">
-                                                <div class="operation-card-title">Округление</div>
-                                                <div class="row path-operations-grid">
-                                                    <div class="input-block path-operations-full-width">
-                                                        <label>Знаков после запятой</label>
-                                                        <input type="number" step="1" min="0" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals">
-                                                    </div>
-                                                    <button mat-flat-button (click)="roundValues(roundValuesDecimals)" matTooltip="Округлить все значения до указанного количества знаков" matTooltipPosition="right" class="mat-flat-button">Округлить</button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="operation-card operation-card-accent">
-                                            <div class="operation-card-title">Подгонка контейнера</div>
-                                            <div class="row path-fit-row">
-                                                <button
-                                                    mat-flat-button
-                                                    (click)="fitViewBoxToPatch()"
-                                                    matTooltip="Подобрать размер активного viewBox по границам текущего patch"
-                                                    matTooltipPosition="right"
-                                                    class="mat-flat-button"
-                                                >Подобрать viewBox под patch</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     <div class="subsection subsection-compact command-list-section">
-                                        <div class="subsection-title">Команды</div>
+                                        <div class="subsection-title">Команды пути</div>
                                         <div *ngFor="let item of parsedPath.path; let j=index"
                                             (mouseenter)="hoveredItem=item"
                                             (mouseleave)="hoveredItem=null"
@@ -468,6 +389,87 @@
                                             </button>
                                         </div>
                                     </div>
+
+                                    <div class="subsection subsection-compact">
+                                        <div class="subsection-title">Операции с путём</div>
+
+                                        <div class="operation-card-grid">
+                                            <div class="operation-card">
+                                                <div class="operation-card-title">Масштаб</div>
+                                                <div class="operation-inline-row">
+                                                    <div class="input-block operation-input-block">
+                                                        <label>Масштаб X</label>
+                                                        <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="scaleX">
+                                                    </div>
+                                                    <div class="input-block operation-input-block">
+                                                        <label>Масштаб Y</label>
+                                                        <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="scaleY">
+                                                    </div>
+                                                    <button mat-flat-button (click)="scale(scaleX, scaleY)" matTooltip="Масштабировать активный viewBox вместе с patch" matTooltipPosition="right" class="mat-flat-button operation-action-button">Масштаб</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="operation-card">
+                                                <div class="operation-card-title">Сдвиг</div>
+                                                <div class="operation-inline-row">
+                                                    <div class="input-block operation-input-block">
+                                                        <label>Сдвиг X</label>
+                                                        <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateX">
+                                                    </div>
+                                                    <div class="input-block operation-input-block">
+                                                        <label>Сдвиг Y</label>
+                                                        <input type="number" step="1" class="app-input" appFormatter [(numberValue)]="translateY">
+                                                    </div>
+                                                    <button mat-flat-button (click)="translate(translateX, translateY)" matTooltip="Сместить активный viewBox по подложке" matTooltipPosition="right" class="mat-flat-button operation-action-button">Сдвиг</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="operation-card">
+                                                <div class="operation-card-title">Поворот</div>
+                                                <div class="operation-inline-row">
+                                                    <div class="input-block operation-input-block operation-input-compact">
+                                                        <label>Центр X</label>
+                                                        <input type="number" step="0.1" class="app-input" appFormatter [numberValue]="activeViewBoxCenterX" disabled>
+                                                    </div>
+                                                    <div class="input-block operation-input-block operation-input-compact">
+                                                        <label>Центр Y</label>
+                                                        <input type="number" step="0.1" class="app-input" appFormatter [numberValue]="activeViewBoxCenterY" disabled>
+                                                    </div>
+                                                    <div class="input-block operation-input-block">
+                                                        <label>Угол (°)</label>
+                                                        <input type="number" step="0.1" class="app-input" appFormatter [(numberValue)]="rotateAngle">
+                                                    </div>
+                                                    <button mat-flat-button (click)="rotate(rotateAngle)" matTooltip="Повернуть patch вокруг центра viewBox и подогнать контейнер под результат" matTooltipPosition="right" class="mat-flat-button operation-action-button">Поворот</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="operation-card">
+                                                <div class="operation-card-title">Округление</div>
+                                                <div class="operation-inline-row">
+                                                    <div class="input-block operation-input-block operation-input-wide">
+                                                        <label>Знаков после запятой</label>
+                                                        <input type="number" step="1" min="0" class="app-input" appFormatter formatterType="positive-integer" [(numberValue)]="roundValuesDecimals">
+                                                    </div>
+                                                    <button mat-flat-button (click)="roundValues(roundValuesDecimals)" matTooltip="Округлить все значения до указанного количества знаков" matTooltipPosition="right" class="mat-flat-button operation-action-button">Округлить</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="operation-card operation-card-accent">
+                                                <div class="operation-card-title">Подгонка контейнера</div>
+                                                <div class="operation-inline-row path-fit-row">
+                                                    <button
+                                                        mat-flat-button
+                                                        (click)="fitViewBoxToPatch()"
+                                                        matTooltip="Подобрать размер активного viewBox по границам текущего patch"
+                                                        matTooltipPosition="right"
+                                                        class="mat-flat-button operation-action-button"
+                                                    >Подобрать viewBox под patch</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                                                        </div>
                                 </ng-container>
 
                                 <ng-template #noActivePatch>

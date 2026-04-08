@@ -271,9 +271,7 @@
 }
 
 .camera-viewport-grid,
-.viewbox-form,
-.path-operations-grid,
-.path-operations-grid4 {
+.viewbox-form {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
@@ -287,10 +285,7 @@
     align-items: end;
 }
 
-.camera-lock-button,
-.path-operations-grid > button,
-.path-operations-grid4 > button,
-.path-operations-full-width {
+.camera-lock-button {
     grid-column: 1 / -1;
 }
 
@@ -337,26 +332,63 @@
 }
 
 .operation-card-grid {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
 }
 
 .operation-card {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 14px;
     margin-top: 0;
     padding: 12px;
     border-radius: 14px;
     border: 1px solid var(--brand-border);
     background: var(--brand-surface-soft);
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .operation-card-title {
+    flex: 0 0 124px;
+    padding-top: 10px;
     color: var(--brand-text);
     font-size: 13px;
     font-weight: 700;
     line-height: 1.35;
+}
+
+.operation-inline-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: max-content;
+}
+
+.operation-inline-row > * {
+    flex: 0 0 auto;
+}
+
+.operation-input-block {
+    min-width: 118px;
+    width: 118px;
+}
+
+.operation-input-wide {
+    min-width: 172px;
+    width: 172px;
+}
+
+.operation-input-compact {
+    min-width: 104px;
+    width: 104px;
+}
+
+.operation-action-button {
+    min-width: 118px;
+    align-self: flex-end;
 }
 
 .operation-card-accent {
@@ -366,11 +398,13 @@
 
 .path-fit-row {
     display: flex;
-    margin-top: 0;
+    align-items: flex-end;
+    gap: 10px;
+    min-width: 0;
 }
 
 .path-fit-row > button {
-    width: 100%;
+    width: auto;
 }
 
 .hall-actions,
@@ -950,10 +984,16 @@ div.dragged {
 
     .camera-viewport-grid,
     .camera-precision-row,
-    .viewbox-form,
-    .path-operations-grid,
-    .path-operations-grid4 {
+    .viewbox-form {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .operation-card {
+        gap: 12px;
+    }
+
+    .operation-card-title {
+        flex-basis: 112px;
     }
 
     .path-toolbar {
