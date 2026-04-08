@@ -6,14 +6,6 @@
             <mat-icon>arrow_left</mat-icon>
         </button>
         <div class="left-column" cdk-scrollable>
-            <div class="brand-header">
-                <mat-icon svgIcon="logo" class="brand-logo"></mat-icon>
-                <div class="brand-copy">
-                    <div class="brand-title">Редактор patch/viewBox</div>
-                    <div class="brand-subtitle">Подложка hall и независимые контейнеры</div>
-                </div>
-            </div>
-
             <div class="left-column-content">
                 <div class="panel-overview">
                     <div class="panel-overview-item">
@@ -313,10 +305,10 @@
 
                     <div class="panel-stack">
                         <div class="menu-panel-shell workflow-panel-shell">
-                            <app-expandable panelTitle="Редактор patch и команд" [panelInfo]="activeViewBox ? activeViewBox.name : 'нет'" [opened]="true">
+                            <app-expandable panelTitle="SVG путь и команды" [panelInfo]="activeViewBox ? activeViewBox.name : 'нет'" [opened]="true">
                                 <ng-container *ngIf="activeViewBox; else noActivePatch">
                                     <div class="subsection">
-                                        <div class="subsection-title">SVG path</div>
+                                        <div class="subsection-title">Путь</div>
                                         <div class="row">
                                             <div class="input-block section-input-fill" [class.has-error]="invalidSyntax">
                                                 <label class="opaque">Путь</label>
@@ -445,7 +437,7 @@
                                     </div>
 
                                     <div class="subsection subsection-compact command-list-section">
-                                        <div class="subsection-title">Команды пути</div>
+                                        <div class="subsection-title">Команды</div>
                                         <div *ngFor="let item of parsedPath.path; let j=index"
                                             (mouseenter)="hoveredItem=item"
                                             (mouseleave)="hoveredItem=null"

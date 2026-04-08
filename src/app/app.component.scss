@@ -23,43 +23,6 @@
     height: 24px;
 }
 
-.brand-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px 10px;
-    border-bottom: 1px solid var(--brand-border);
-    background: linear-gradient(180deg, rgba(181, 40, 79, 0.18), rgba(255,255,255,0.04));
-}
-
-.brand-logo {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-    overflow: hidden;
-    background: #ffffff;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(181, 40, 79, 0.18);
-}
-
-.brand-copy {
-    min-width: 0;
-}
-
-.brand-title {
-    color: var(--brand-text);
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1.2;
-}
-
-.brand-subtitle {
-    margin-top: 4px;
-    color: var(--brand-text-muted);
-    font-size: 12px;
-    line-height: 1.35;
-}
-
 /* UI */
 .left-column-wrapper {
     width: 368px;
@@ -83,7 +46,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    padding: 14px 12px 20px;
+    padding: 10px 12px 20px;
 }
 
 .panel-overview {
@@ -361,19 +324,29 @@
 }
 
 .path-toolbar {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-wrap: nowrap;
     align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
 }
 
 .path-toolbar > * {
+    flex: 0 0 auto;
     min-width: 0;
-    max-width: 100%;
+    max-width: none;
 }
 
 .path-toolbar > button {
-    justify-self: stretch;
+    flex-shrink: 0;
+}
+
+.path-toolbar app-open,
+.path-toolbar app-save {
+    display: inline-flex;
+    flex: 0 0 auto;
 }
 
 .operation-card-grid {
@@ -573,10 +546,12 @@
 }
 
 .command-row {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr) 28px;
+    display: flex;
+    align-items: flex-start;
     gap: 8px;
-    align-items: start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
     margin-top: 8px;
     padding: 10px !important;
     border-radius: 10px;
@@ -585,32 +560,34 @@
 }
 
 .command-row-values {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-    gap: 8px;
-    min-width: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: max-content;
 }
 
 .command-value-cell {
     display: flex;
     align-items: center;
-    min-width: 0;
+    flex: 0 0 auto;
 }
 
 .command-value-input,
 .command-row .svg-value {
-    width: 100%;
-    min-width: 0;
+    width: 56px;
+    min-width: 56px;
     margin: 0;
     text-align: left;
     font-size: 12px;
 }
 
 .command-checkbox {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
+    width: 56px;
+    min-width: 56px;
     min-height: 40px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -618,8 +595,8 @@
 }
 
 .command-row-menu {
-    align-self: start;
-    justify-self: end;
+    align-self: center;
+    flex: 0 0 auto;
 }
 
 .type-token {
@@ -630,7 +607,8 @@
     font-size: 12px;
     line-height: 1;
     height: 40px;
-    width: 28px;
+    width: 36px;
+    min-width: 36px;
     text-align: center;
     background-color: rgba(255, 128, 0, 0.5);
     color: var(--brand-text-muted);
@@ -921,7 +899,7 @@ div.dragged {
     height: 28px;
     padding: 0;
     line-height: 28px;
-    margin: 6px 0 0;
+    margin: 0;
 }
 
 .command-row .more-button mat-icon,
@@ -951,19 +929,19 @@ div.dragged {
     .camera-viewport-grid,
     .camera-precision-row,
     .viewbox-form,
-    .path-toolbar,
     .path-operations-grid,
     .path-operations-grid4 {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .command-row {
-        grid-template-columns: 28px minmax(0, 1fr);
+    .path-toolbar {
+        gap: 6px;
     }
 
-    .command-row-menu {
-        grid-column: 2;
-        justify-self: end;
-        margin-top: 0;
+    .command-row .svg-value,
+    .command-value-input,
+    .command-checkbox {
+        width: 52px;
+        min-width: 52px;
     }
 }
