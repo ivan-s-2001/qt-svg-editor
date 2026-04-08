@@ -73,6 +73,19 @@ textarea.app-input {
     padding-bottom: 10px;
 }
 
+input[type='number'] {
+    appearance: textfield;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
 input.app-input:hover,
 textarea.app-input:hover {
     border-color: #c4ceda;

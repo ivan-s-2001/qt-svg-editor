@@ -63,37 +63,6 @@
     padding: 14px 14px 24px;
 }
 
-.panel-overview {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.panel-overview-item {
-    min-width: 0;
-    padding: 12px 14px;
-    border-radius: 16px;
-    border: 1px solid var(--brand-border);
-    background: var(--brand-surface-raised);
-    box-shadow: var(--brand-shadow-soft);
-}
-
-.panel-overview-label {
-    color: var(--brand-text-subtle);
-    font-size: 11px;
-    line-height: 1.2;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-}
-
-.panel-overview-value {
-    margin-top: 8px;
-    color: var(--brand-text);
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-}
 
 .menu-group {
     display: flex;
@@ -276,15 +245,15 @@
 
 .left-column input.app-input[type='number'],
 .left-column input.svg-value[type='number'] {
-    appearance: auto;
-    -webkit-appearance: auto;
-    -moz-appearance: auto;
+    appearance: textfield;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
     min-height: 42px;
     height: 42px;
     line-height: 1.35;
     font-size: 13px;
     font-variant-numeric: tabular-nums;
-    padding: 0 38px 0 12px;
+    padding: 0 12px;
     background-clip: padding-box;
 }
 
@@ -292,9 +261,9 @@
 .left-column input.app-input[type='number']::-webkit-inner-spin-button,
 .left-column input.svg-value[type='number']::-webkit-outer-spin-button,
 .left-column input.svg-value[type='number']::-webkit-inner-spin-button {
-    opacity: 1;
+    -webkit-appearance: none;
+    appearance: none;
     margin: 0;
-    cursor: pointer;
 }
 
 .left-column .mat-mdc-checkbox {
@@ -979,7 +948,6 @@ div.dragged {
         bottom: 8px;
     }
 
-    .panel-overview,
     .camera-viewport-grid,
     .camera-precision-row,
     .viewbox-form,
