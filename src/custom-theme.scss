@@ -1,24 +1,45 @@
 @use '@angular/material' as mat;
 
-// Custom Theming for Angular Material
-// For more information: https://material.angular.io/guide/theming
-// Plus imports for other components in your app.
-
-// Include the common styles for Angular Material. We include this here so that you only
-// have to load a single css file for Angular Material in your app.
-// Be sure that you only ever include this mixin once!
 @include mat.core();
 
-// Define the palettes for your theme using the Material Design palettes available in palette.scss
-// (imported above). For each palette, you can optionally specify a default, lighter, and darker
-// hue. Available color palettes: https://material.io/design/color/
 $svg-path-editor-primary: mat.define-palette(mat.$grey-palette, 800);
-$svg-path-editor-accent: mat.define-palette(mat.$blue-palette);
 
-// The warn palette is optional (defaults to red).
+$svg-path-editor-accent-palette: (
+  50: #f7e5eb,
+  100: #ebbdcb,
+  200: #de91a8,
+  300: #d06585,
+  400: #c6466a,
+  500: #b5284f,
+  600: #ae2448,
+  700: #a51e3f,
+  800: #9d1836,
+  900: #8d0f26,
+  A100: #ffbdd0,
+  A200: #ff8aad,
+  A400: #ff578a,
+  A700: #ff3d78,
+  contrast: (
+    50: #16202c,
+    100: #16202c,
+    200: #16202c,
+    300: #ffffff,
+    400: #ffffff,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+    A100: #16202c,
+    A200: #16202c,
+    A400: #ffffff,
+    A700: #ffffff,
+  )
+);
+
+$svg-path-editor-accent: mat.define-palette($svg-path-editor-accent-palette, 500, 300, 700);
 $svg-path-editor-warn: mat.define-palette(mat.$red-palette);
 
-// Create the theme object (a Sass map containing all of the palettes).
 $svg-path-editor-theme: mat.define-dark-theme((
   color: (
     primary: $svg-path-editor-primary,
@@ -32,9 +53,6 @@ $svg-path-editor-theme: mat.define-dark-theme((
   density: 0
 ));
 
-// Include theme styles for core and each component used in your app.
-// Alternatively, you can import and @include the theme mixins for each component
-// that you are using.
 @include mat.core-theme($svg-path-editor-theme);
 @include mat.button-theme($svg-path-editor-theme);
 @include mat.fab-theme($svg-path-editor-theme);
@@ -49,4 +67,3 @@ $svg-path-editor-theme: mat.define-dark-theme((
 @include mat.snack-bar-theme($svg-path-editor-theme);
 
 @include mat.typography-hierarchy($svg-path-editor-theme);
-
