@@ -388,8 +388,8 @@ function parseBorders(styleMap: Record<string, string>): BorderMap {
     left: { ...defaultBorder },
   };
 
-  if (styleMap.border) {
-    const parsed = parseBorderShorthand(styleMap.border);
+  if (styleMap['border']) {
+    const parsed = parseBorderShorthand(styleMap['border']);
     borders.top = { ...parsed };
     borders.right = { ...parsed };
     borders.bottom = { ...parsed };
