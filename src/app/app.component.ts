@@ -1134,6 +1134,7 @@ export class AppComponent implements AfterViewInit {
       return;
     }
 
+    this.activateViewBox(viewBoxId);
     this.canvas?.stopDrag();
     this.viewBoxDrag = {
       viewBoxId,
@@ -1499,7 +1500,7 @@ export class AppComponent implements AfterViewInit {
     const rows = viewBoxes.map((viewBox) => this.buildViewBoxSqlRow(viewBox, hallId));
 
     return [
-      'INSERT INTO `place_obj` (`id`, `hall_id`, `x`, `y`, `width`, `height`, `type`, `param`, `in_front`) VALUES',
+      'INSERT INTO `place` (`id`, `hall_id`, `stool_id`, `x`, `y`, `block`, `series`, `place`, `disabled`) VALUES',
       rows.map((row, index) => `${row}${index < rows.length - 1 ? ',' : ';'}`).join('\n')
     ].join('\n');
   }
@@ -1513,7 +1514,7 @@ export class AppComponent implements AfterViewInit {
   private buildViewBoxSqlRow(viewBox: ViewBoxEntity, hallId: string): string {
     const param = this.escapeSqlString(this.buildViewBoxParamMarkup(viewBox));
 
-    return `(NULL, ${hallId}, ${viewBox.x}, ${viewBox.y}, ${viewBox.width}, ${viewBox.height}, 0, '${param}', 1)`;
+    return `(NULL, ${hallId}, ${viewBox.x}+0, ${viewBox.y}+0, ${viewBox.width}, ${viewBox.height}, 0, '${param}', 1)`;
   }
 
   private buildViewBoxParamMarkup(viewBox: ViewBoxEntity): string {
