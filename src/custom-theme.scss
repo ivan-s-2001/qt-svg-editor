@@ -40,7 +40,7 @@ $svg-path-editor-accent-palette: (
 $svg-path-editor-accent: mat.define-palette($svg-path-editor-accent-palette, 500, 300, 700);
 $svg-path-editor-warn: mat.define-palette(mat.$red-palette);
 
-$svg-path-editor-theme: mat.define-dark-theme((
+$svg-path-editor-theme: mat.define-light-theme((
   color: (
     primary: $svg-path-editor-primary,
     accent: $svg-path-editor-accent,
@@ -48,7 +48,7 @@ $svg-path-editor-theme: mat.define-dark-theme((
   ),
   typography: mat.define-typography-config(
     $body-2: mat.define-typography-level($font-size: 12px),
-    $button: mat.define-typography-level($font-size: 14px, $font-weight: 500)
+    $button: mat.define-typography-level($font-size: 14px, $font-weight: 600)
   ),
   density: 0
 ));
