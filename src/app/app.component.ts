@@ -172,11 +172,6 @@ export class AppComponent implements AfterViewInit {
   isEditingImages = false;
   isViewBoxExportPopupOpen = false;
   isViewBoxExportCopied = false;
-  isViewBoxSqlExportCopied = false;
-  isAllViewBoxesExportPopupOpen = false;
-  isAllViewBoxesExportCopied = false;
-  viewBoxExportHallIdValue = '';
-  allViewBoxesExportHallIdValue = '';
 
   max = Math.max;
   trackByIndex = (idx: number, _: unknown) => idx;
@@ -211,18 +206,10 @@ export class AppComponent implements AfterViewInit {
   @HostListener('document:keydown', ['$event']) onKeyDown($event: KeyboardEvent) {
     const tag = $event.target instanceof Element ? $event.target.tagName : null;
 
-    if ($event.key === KEYBOARD.KEYS.ESCAPE) {
-      if (this.isViewBoxExportPopupOpen) {
-        this.closeViewBoxExportPopup();
-        $event.preventDefault();
-        return;
-      }
-
-      if (this.isAllViewBoxesExportPopupOpen) {
-        this.closeAllViewBoxesExportPopup();
-        $event.preventDefault();
-        return;
-      }
+    if (this.isViewBoxExportPopupOpen && $event.key === KEYBOARD.KEYS.ESCAPE) {
+      this.closeViewBoxExportPopup();
+      $event.preventDefault();
+      return;
     }
 
     if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
@@ -377,16 +364,23 @@ export class AppComponent implements AfterViewInit {
     const pathD = activeViewBox.patch.rawPath || this._rawPath || '';
 
     return [
-      `(NULL, #new_hall_id#, ${activeViewBox.x}, ${activeViewBox.y}, ${activeViewBox.width}, ${activeViewBox.height}, 0, '<div style="
-    position:absolute;
-    width:${activeViewBox.width}px;
-    height:${activeViewBox.height}px;
-    box-sizing:border-box;
-  " generated_object>
-    <svg viewBox="0 0 ${activeViewBox.width} ${activeViewBox.height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
-      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />
-    </svg>
-  </div>', 1)`
+      `x - ${activeViewBox.x} (@x сейчас для логики)`,
+      `y - ${activeViewBox.y} (@y сейчас для логики)`,
+      `width - ${activeViewBox.width} (@width сейчас для логики)`,
+      `heght - ${activeViewBox.height} (@heght сейчас для логики)`,
+      'param -',
+      '"',
+      '<div style="',
+      '    position:absolute;',
+      '    width:@x;',
+      '    height:@y;',
+      '    box-sizing:border-box;',
+      '  " generated_object>',
+      '    <svg viewBox="0 0 @width @heght" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">',
+      `      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />`,
+      '    </svg>',
+      '  </div>',
+      '"'
     ].join('\n');
   }
 
