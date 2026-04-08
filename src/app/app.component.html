@@ -5,30 +5,7 @@
         >
             <mat-icon>arrow_left</mat-icon>
         </button>
-        <div class="left-column" cdk-scrollable>
-            <div class="brand-header">
-                <mat-icon svgIcon="logo" class="brand-logo"></mat-icon>
-                <div class="brand-copy">
-                    <div class="brand-title">Редактор patch/viewBox</div>
-                    <div class="brand-subtitle">Подложка hall и независимые контейнеры</div>
-                </div>
-            </div>
 
-            <div class="left-column-content">
-                <div class="panel-overview">
-                    <div class="panel-overview-item">
-                        <div class="panel-overview-label">Сцена</div>
-                        <div class="panel-overview-value">{{hasHall ? (hallWidth + ' × ' + hallHeight) : 'не загружена'}}</div>
-                    </div>
-                    <div class="panel-overview-item">
-                        <div class="panel-overview-label">ViewBox</div>
-                        <div class="panel-overview-value">{{viewBoxes.length}}</div>
-                    </div>
-                    <div class="panel-overview-item">
-                        <div class="panel-overview-label">Активный</div>
-                        <div class="panel-overview-value">{{activeViewBox ? activeViewBox.name : 'не выбран'}}</div>
-                    </div>
-                </div>
 
                 <section class="menu-group">
                     <div class="menu-group-header">
@@ -49,7 +26,7 @@
                                                 [(ngModel)]="hallFragment"
                                                 class="app-input"
                                                 style="height:160px;"
-                                                placeholder="Вставьте HTML-фрагмент с div.hall"
+                                                placeholder="Вставьте <body> из view_old"
                                             ></textarea>
                                         </div>
                                     </div>
@@ -130,7 +107,6 @@
                     <div class="menu-group-header">
                         <div class="menu-group-eyebrow">Контейнеры</div>
                         <div class="menu-group-title">ViewBox</div>
-                        <div class="menu-group-description">Создание, выбор и вложенное редактирование контейнеров patch</div>
                     </div>
 
                     <div class="panel-stack">
@@ -175,7 +151,7 @@
                                 <div class="subsection subsection-compact">
                                     <div class="subsection-title">Контейнеры</div>
                                     <div class="viewbox-hint viewbox-select-hint">
-                                        Выберите контейнер в списке. Его панель редактирования откроется прямо под выбранным пунктом.
+                                        Выберите контейнер в списке.
                                     </div>
 
                                     <div class="viewbox-list" *ngIf="viewBoxes.length > 0; else noViewBoxes">
@@ -282,12 +258,6 @@
                                                     <div class="active-viewbox-meta">
                                                         Команд в patch: {{viewBox.patch.parsedPath.path.length}}
                                                     </div>
-                                                    <div class="active-viewbox-meta">
-                                                        Patch ограничен рамками выбранного viewBox и не затрагивает другие контейнеры.
-                                                    </div>
-                                                    <div class="active-viewbox-meta">
-                                                        Перетаскивание контейнера на сцене доступно только за ярлычок названия.
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -365,7 +335,48 @@
                                         </div>
                                     </div>
 
-                                    <div class="subsection subsection-compact">
+                                    <div class="subsection subsection-compact command-list-section">
+                                        <div class="subsection-title">Команды пути</div>
+                                        <div *ngFor="let item of parsedPath.path; let j=index"
+                                            (mouseenter)="hoveredItem=item"
+                                            (mouseleave)="hoveredItem=null"
+                                            [ngClass]="{ hovered:item===hoveredItem && !draggedPoint, dragged:(draggedPoint && item===draggedPoint.itemReference) || (focusedItem === item) }"
+                                            class="row command-row"
+                                            (click)="focusedItem=item"
+                                            id="svg_command_row_{{j}}">
+                                            <div class="type-token" [ngClass]="{'type-token-relative':item.relative}" style="user-select: none;-webkit-user-select: none;" (click)="item.setRelative(!item.relative); afterModelChange();">{{item.getType()}}</div>
+
+                                            <div class="command-row-values">
+                                                <ng-container *ngFor="let value of item.values; let i = index; trackBy:trackByIndex">
+                                                    <div class="command-value-cell">
+                                                        <mat-checkbox
+                                                            *ngIf="item.getType().toLowerCase()==='a' && (i===3 || i===4)"
+                                                            [ngModel]="value"
+                                                            (ngModelChange)="setValue(item,i,$event?1:0);"
+                                                            (focus)="focusedItem=item"
+                                                            class="small-checkbox command-checkbox"
+                                                            matTooltipClass="app-tooltip"
+                                                            [matTooltip]="getTooltip(item, i)"
+                                                        ></mat-checkbox>
+                                                        <input
+                                                            *ngIf="!(item.getType().toLowerCase()==='a' && (i===3 || i===4))"
+                                                            type="number"
+                                                            step="0.1"
+                                                            appKeyboardNavigable
+                                                            keyboardNavigableIdPrefix="svg_command"
+                                                            appFormatter
+                                                            [numberValue]="value"
+                                                            (numberValueChange)="setValue(item,i,$event);"
+                                                            class="svg-value app-input command-value-input"
+                                                            id="svg_command_{{j}}_{{item.getType().toLowerCase()==='a' && i>4 ? i-1 : i}}"
+                                                            (focus)="focusedItem=item"
+                                                            matTooltipClass="app-tooltip"
+                                                            [matTooltip]="getTooltip(item, i)"
+                                                        >
+                                                    </div>
+                                                </ng-container>
+                                            </div>
+<div class="subsection subsection-compact">
                                         <div class="subsection-title">Операции с patch</div>
 
                                         <div class="operation-card-grid">
@@ -443,49 +454,6 @@
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div class="subsection subsection-compact command-list-section">
-                                        <div class="subsection-title">Команды пути</div>
-                                        <div *ngFor="let item of parsedPath.path; let j=index"
-                                            (mouseenter)="hoveredItem=item"
-                                            (mouseleave)="hoveredItem=null"
-                                            [ngClass]="{ hovered:item===hoveredItem && !draggedPoint, dragged:(draggedPoint && item===draggedPoint.itemReference) || (focusedItem === item) }"
-                                            class="row command-row"
-                                            (click)="focusedItem=item"
-                                            id="svg_command_row_{{j}}">
-                                            <div class="type-token" [ngClass]="{'type-token-relative':item.relative}" style="user-select: none;-webkit-user-select: none;" (click)="item.setRelative(!item.relative); afterModelChange();">{{item.getType()}}</div>
-
-                                            <div class="command-row-values">
-                                                <ng-container *ngFor="let value of item.values; let i = index; trackBy:trackByIndex">
-                                                    <div class="command-value-cell">
-                                                        <mat-checkbox
-                                                            *ngIf="item.getType().toLowerCase()==='a' && (i===3 || i===4)"
-                                                            [ngModel]="value"
-                                                            (ngModelChange)="setValue(item,i,$event?1:0);"
-                                                            (focus)="focusedItem=item"
-                                                            class="small-checkbox command-checkbox"
-                                                            matTooltipClass="app-tooltip"
-                                                            [matTooltip]="getTooltip(item, i)"
-                                                        ></mat-checkbox>
-                                                        <input
-                                                            *ngIf="!(item.getType().toLowerCase()==='a' && (i===3 || i===4))"
-                                                            type="number"
-                                                            step="0.1"
-                                                            appKeyboardNavigable
-                                                            keyboardNavigableIdPrefix="svg_command"
-                                                            appFormatter
-                                                            [numberValue]="value"
-                                                            (numberValueChange)="setValue(item,i,$event);"
-                                                            class="svg-value app-input command-value-input"
-                                                            id="svg_command_{{j}}_{{item.getType().toLowerCase()==='a' && i>4 ? i-1 : i}}"
-                                                            (focus)="focusedItem=item"
-                                                            matTooltipClass="app-tooltip"
-                                                            [matTooltip]="getTooltip(item, i)"
-                                                        >
-                                                    </div>
-                                                </ng-container>
-                                            </div>
-
                                             <button mat-icon-button [matMenuTriggerFor]="appMenu" [matMenuTriggerData]="{item:item, idx:j}" class="more-button command-row-menu">
                                                 <mat-icon svgIcon="more"></mat-icon>
                                             </button>
