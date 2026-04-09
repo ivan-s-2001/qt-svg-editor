@@ -35,14 +35,14 @@ type RadiusMap = {
   bl: RadiusCorner;
 };
 
-export function convertLegacyHallInsertSqlToUpdateSql(
+export function convertPlaceObjInsertSqlToUpdates(
   sql: string,
-  options: LegacyHallConvertOptions | string,
+  options: LegacyHallConvertOptions,
 ): string {
   const blocks = extractPlaceObjInsertBlocks(sql);
   const out: string[] = [];
   const hallIdSqlVar = '@hall_id';
-  const hallIdSqlValue = normalizeHallIdSqlValue(resolveHallIdValue(options));
+  const hallIdSqlValue = normalizeHallIdSqlValue(options.hallIdValue);
 
   out.push(`SET ${hallIdSqlVar} = ${hallIdSqlValue};`);
   out.push('');
@@ -85,11 +85,6 @@ function normalizeHallIdSqlValue(value: string): string {
   const trimmed = value.trim();
   return /^\d+$/.test(trimmed) ? trimmed : '0';
 }
-
-function resolveHallIdValue(options: LegacyHallConvertOptions | string): string {
-  return typeof options === 'string' ? options : options.hallIdValue;
-}
-
 
 function trimTuple(value: string): string {
   return value.trim().replace(/^,\s*/, '').replace(/^\(/, '').replace(/\)\s*$/, '');
@@ -416,7 +411,7 @@ function normalizeCornerRadii(radius: RadiusMap, w: number, h: number): RadiusMa
 
 function hasFigureStyles(styleMap: StyleMap): boolean {
   const bgColor = (styleMap['background-color'] || '').trim().toLowerCase();
-  const bg = (styleMap.background || '').trim().toLowerCase();
+  const bg = (styleMap['background'] || '').trim().toLowerCase();
 
   if (bgColor && bgColor !== 'transparent' && bgColor !== 'none') {
     return true;
@@ -933,3 +928,6 @@ function trimFloat(value: number): string {
   const text = value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
   return text === '' ? '0' : text;
 }
+
+
+export const convertLegacyHallInsertSqlToUpdateSql = convertPlaceObjInsertSqlToUpdates;
