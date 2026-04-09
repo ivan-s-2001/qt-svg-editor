@@ -81,13 +81,6 @@ export function convertLegacyHallInsertSqlToUpdateSql(
   return out.join('\n').trimEnd() + '\n';
 }
 
-export function convertPlaceObjInsertSqlToUpdates(
-  sql: string,
-  options: LegacyHallConvertOptions | string,
-): string {
-  return convertLegacyHallInsertSqlToUpdateSql(sql, options);
-}
-
 function normalizeHallIdSqlValue(value: string): string {
   const trimmed = value.trim();
   return /^\d+$/.test(trimmed) ? trimmed : '0';
@@ -423,7 +416,7 @@ function normalizeCornerRadii(radius: RadiusMap, w: number, h: number): RadiusMa
 
 function hasFigureStyles(styleMap: StyleMap): boolean {
   const bgColor = (styleMap['background-color'] || '').trim().toLowerCase();
-  const bg = (styleMap['background'] || '').trim().toLowerCase();
+  const bg = (styleMap.background || '').trim().toLowerCase();
 
   if (bgColor && bgColor !== 'transparent' && bgColor !== 'none') {
     return true;
