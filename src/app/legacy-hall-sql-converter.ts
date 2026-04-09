@@ -202,45 +202,35 @@ function buildSvgFromStyles(styleMap: StyleMap, width: number, height: number): 
     height,
   );
 
-  const hasUniformBorder = allBordersEqual(borders)
-    && borders.top.width > 0
-    && borders.top.style.toLowerCase() !== 'none';
-
+  const fillPathD = roundedRectPath(0, 0, width, height, radius);
   const parts: string[] = [];
 
   parts.push(
     `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">`
   );
 
-  if (hasUniformBorder) {
+  if (!isTransparentLike(fill)) {
+    parts.push(`      <path d="${fillPathD}" fill="${escapeHtmlAttr(fill)}" stroke="none"></path>`);
+  }
+
+  if (allBordersEqual(borders) && borders.top.width > 0 && borders.top.style.toLowerCase() !== 'none') {
     const bw = borders.top.width;
     const bc = borders.top.color;
-    const pathD = roundedRectPath(
-      bw / 2,
-      bw / 2,
-      Math.max(0, width - bw),
-      Math.max(0, height - bw),
-      insetRadius(radius, bw / 2),
-    );
+    const borderRadius = insetRadius(radius, bw / 2);
+    const borderPathD = roundedRectPath(bw / 2, bw / 2, width - bw, height - bw, borderRadius);
 
     parts.push(
-      `      <path d="${pathD}" fill="${escapeHtmlAttr(fill)}" stroke="${escapeHtmlAttr(bc)}" stroke-width="${trimFloat(bw)}"></path>`
+      `      <path d="${borderPathD}" fill="none" stroke="${escapeHtmlAttr(bc)}" stroke-width="${trimFloat(bw)}"></path>`
     );
   } else {
-    const fillPathD = roundedRectPath(0, 0, width, height, radius);
-
-    if (!isTransparentLike(fill)) {
-      parts.push(`      <path d="${fillPathD}" fill="${escapeHtmlAttr(fill)}" stroke="none"></path>`);
-    }
-
     parts.push(...buildPerSideBorderSvg(borders, width, height, radius));
   }
 
   parts.push('    </svg>');
 
-  return parts.join('
-');
+  return parts.join('\n');
 }
+
 function buildOverlayTextStyle(styleMap: StyleMap): string {
   const keep = [
     'line-height',
