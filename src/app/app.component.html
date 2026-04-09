@@ -540,17 +540,6 @@
             <button mat-mini-fab color="primary" matTooltip="Отменить" matTooltipPosition="below" (click)="undo()" [disabled]="!canUndo()"><mat-icon>undo</mat-icon></button>
             <button mat-mini-fab color="primary" matTooltip="Повторить" matTooltipPosition="below" (click)="redo()" [disabled]="!canRedo()"><mat-icon>redo</mat-icon></button>
         </div>
-        <div class="scene-side-tools">
-            <button
-                mat-raised-button
-                type="button"
-                class="scene-legacy-converter-button"
-                (click)="openLegacyHallConverter()"
-            >
-                <mat-icon>sync_alt</mat-icon>
-                преобразовать старый зал в SVG
-            </button>
-        </div>
         <div class="scene-bottom-actions">
             <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;canvas?.zoomViewPort(9/10)" matTooltip="Приблизить" matTooltipPosition="left" style="margin-top: 24px"><mat-icon svgIcon="zoom_in"></mat-icon></button>
             <button mat-mini-fab color="primary" (click)="cfg.viewPortLocked=false;zoomAuto()" matTooltip="Показать целиком" matTooltipPosition="left"><mat-icon svgIcon="zoom_fit"></mat-icon></button>
@@ -584,7 +573,7 @@
             xmlns:xlink="http://www.w3.org/1999/xlink"
             app-canvas
             [attr.viewBox]="cfg.viewPortX+' '+cfg.viewPortY+' '+cfg.viewPortWidth+' '+cfg.viewPortHeight"
-
+            
             [parsedPath]="parsedPath"
             [targetPoints]="targetPoints"
             [controlPoints]="controlPoints"
@@ -826,105 +815,6 @@
         </div>
     </div>
 </div>
-
-
-<div
-    *ngIf="isLegacyHallConverterOpen"
-    class="viewbox-export-modal-backdrop legacy-hall-converter-backdrop"
-    (click)="closeLegacyHallConverter()"
->
-    <div
-        class="viewbox-export-modal legacy-hall-converter-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Преобразовать старый зал в SVG"
-        (click)="$event.stopPropagation()"
-    >
-        <div class="viewbox-export-modal-header">
-            <div class="viewbox-export-modal-copy">
-                <div class="viewbox-export-modal-title">Преобразовать старый зал в SVG</div>
-                <div class="viewbox-export-modal-subtitle">Слева вставьте INSERT INTO place_obj, справа получите UPDATE place_obj по логике PHP-конвертера</div>
-            </div>
-            <button
-                mat-icon-button
-                type="button"
-                class="viewbox-export-close-button"
-                (click)="closeLegacyHallConverter()"
-                matTooltip="Закрыть"
-                matTooltipPosition="left"
-            >
-                <mat-icon>close</mat-icon>
-            </button>
-        </div>
-
-        <div class="viewbox-export-hall-id-row legacy-hall-converter-controls">
-            <div class="input-block viewbox-export-hall-id-field legacy-hall-converter-hall-id-field">
-                <label>Новый hall_id</label>
-                <input
-                    class="app-input"
-                    inputmode="numeric"
-                    [ngModel]="legacyHallConverterHallIdValue"
-                    (ngModelChange)="updateLegacyHallConverterHallId($event)"
-                    placeholder="123"
-                >
-            </div>
-
-            <div class="legacy-hall-converter-hint">
-                В начале результата добавляется <strong>SET @hall_id = ...;</strong>, а в UPDATE используется <strong>WHERE hall_id = @hall_id</strong>.
-            </div>
-        </div>
-
-        <div class="legacy-hall-converter-grid">
-            <div class="legacy-hall-converter-pane">
-                <div class="legacy-hall-converter-pane-title">Входной SQL INSERT</div>
-                <div class="legacy-hall-converter-pane-subtitle">Поддерживаются блоки INSERT INTO place_obj ... VALUES (...)</div>
-                <textarea
-                    class="app-input viewbox-export-textarea legacy-hall-converter-textarea"
-                    [ngModel]="legacyHallConverterInputSql"
-                    (ngModelChange)="updateLegacyHallConverterInputSql($event)"
-                    placeholder="INSERT INTO place_obj (id, hall_id, x, y, width, height, type, param, in_front) VALUES ..."
-                ></textarea>
-            </div>
-
-            <div class="legacy-hall-converter-pane">
-                <div class="legacy-hall-converter-pane-title">Готовый SQL UPDATE</div>
-                <div class="legacy-hall-converter-pane-subtitle">Результат можно сразу копировать и выполнять вручную</div>
-                <textarea
-                    class="app-input viewbox-export-textarea legacy-hall-converter-textarea legacy-hall-converter-output"
-                    [value]="legacyHallSqlUpdateText"
-                    readonly
-                ></textarea>
-            </div>
-        </div>
-
-        <div class="viewbox-export-modal-actions">
-            <button
-                mat-flat-button
-                color="primary"
-                type="button"
-                class="mat-flat-button"
-                (click)="copyLegacyHallSqlUpdateText()"
-            >
-                <mat-icon>content_copy</mat-icon>
-                Копировать UPDATE
-            </button>
-
-            <div class="viewbox-export-copy-state" *ngIf="isLegacyHallSqlCopied">
-                SQL скопирован
-            </div>
-
-            <button
-                mat-flat-button
-                type="button"
-                class="mat-flat-button"
-                (click)="closeLegacyHallConverter()"
-            >
-                Закрыть
-            </button>
-        </div>
-    </div>
-</div>
-
 
 <app-import (importPath)="openPath($event, '')"></app-import>
 
