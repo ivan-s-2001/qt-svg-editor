@@ -643,11 +643,6 @@ function splitSqlTuples(valuesSql: string): string[] {
     const ch = valuesSql[i];
     const next = valuesSql[i + 1] ?? '';
 
-    // пропускаем запятые и пробелы между tuples
-    if (!inQuote && depth === 0 && buf === '' && (ch === ',' || /\s/.test(ch))) {
-      continue;
-    }
-
     buf += ch;
 
     if (ch === "'" && !inQuote) {
@@ -661,11 +656,9 @@ function splitSqlTuples(valuesSql: string): string[] {
         i++;
         continue;
       }
-
       if ((valuesSql[i - 1] ?? '') === '\\') {
         continue;
       }
-
       inQuote = false;
       continue;
     }
