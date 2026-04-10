@@ -64,6 +64,7 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() draggedIsNew = false;
   @Input() images: Image[] = [];
   @Input() editImages = true;
+  @Input() allowViewPortNavigation = true;
 
   @Output() afterModelChange = new EventEmitter<void>();
   @Output() dragging = new EventEmitter<boolean>();
@@ -173,6 +174,9 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   @HostListener('mousedown', ['$event']) onMouseDown($event: MouseEvent) {
+    if (!this.allowViewPortNavigation) {
+      return;
+    }
     this.startDragCanvas($event);
     $event.stopPropagation();
   }
@@ -183,6 +187,9 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     this.stopDrag();
   }
   @HostListener('touchstart', ['$event']) onTouchStart($event: TouchEvent) {
+    if (!this.allowViewPortNavigation) {
+      return;
+    }
     this.startDragCanvas($event);
     $event.preventDefault();
     $event.stopPropagation();
@@ -194,6 +201,9 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     this.stopDrag();
   }
   @HostListener('wheel', ['$event']) onWheel($event: WheelEvent) {
+    if (!this.allowViewPortNavigation) {
+      return;
+    }
     this.wheel$.next($event);
   }
   @HostListener('click', ['$event']) onClick() {

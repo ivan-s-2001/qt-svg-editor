@@ -95,6 +95,27 @@ type ViewBoxEntity = {
   patch: ViewBoxPatchContext;
 };
 
+
+function focusedItemTargetScreenPoint(
+  activeViewBox: ViewBoxEntity | null,
+  focusedItem: SvgItem | null,
+  cfg: ConfigService,
+  metrics: { scale: number; offsetX: number; offsetY: number }
+): { x: number; y: number } {
+  if (!activeViewBox) {
+    return { x: 0, y: 0 };
+  }
+
+  const localTarget = focusedItem ? focusedItem.targetLocation() : { x: 0, y: 0 };
+  const sceneX = activeViewBox.x - activeViewBox.patch.localViewPort.x + localTarget.x;
+  const sceneY = activeViewBox.y - activeViewBox.patch.localViewPort.y + localTarget.y;
+
+  return {
+    x: metrics.offsetX + ((sceneX - cfg.viewPortX) * metrics.scale),
+    y: metrics.offsetY + ((sceneY - cfg.viewPortY) * metrics.scale)
+  };
+}
+
 const DEFAULT_HALL_CSS = `.hall {position:relative}
 .hall * {-webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}
 .hall .r {position:absolute;z-index:1;cursor:pointer;border:1px solid black;overflow:hidden;box-sizing:border-box;}
@@ -328,11 +349,11 @@ export class AppComponent implements AfterViewInit {
   get hallLayerScale(): number { return this.getSceneRenderMetrics().scale; }
   get hallLayerOffsetX(): number {
     const metrics = this.getSceneRenderMetrics();
-    return Number((metrics.offsetX - (this.cfg.viewPortX * metrics.scale)).toFixed(4));
+    return metrics.offsetX - (this.cfg.viewPortX * metrics.scale);
   }
   get hallLayerOffsetY(): number {
     const metrics = this.getSceneRenderMetrics();
-    return Number((metrics.offsetY - (this.cfg.viewPortY * metrics.scale)).toFixed(4));
+    return metrics.offsetY - (this.cfg.viewPortY * metrics.scale);
   }
   get canCreateViewBox(): boolean { return this.newViewBox.width > 0 && this.newViewBox.height > 0; }
   get activePatchOffsetX(): number { return this.activeViewBox?.x || 0; }
@@ -455,27 +476,26 @@ export class AppComponent implements AfterViewInit {
     this.cfg.viewPortY = parseFloat((1 * y).toPrecision(6));
     this.cfg.viewPortWidth = parseFloat((1 * w).toPrecision(4));
     this.cfg.viewPortHeight = parseFloat((1 * h).toPrecision(4));
-    this.refreshCanvasDerivedMetrics();
+    this.recalculateSceneStrokeWidth();
   }
 
   onCanvasWidthChange(width: number): void {
     this.canvasWidth = width || this.canvasWidth;
-    this.refreshCanvasDerivedMetrics();
+    this.recalculateSceneStrokeWidth();
   }
 
   onCanvasHeightChange(height: number): void {
-    this.canvasHeight = height;
-    this.refreshCanvasDerivedMetrics();
+    this.canvasHeight = height || this.canvasHeight;
+    this.recalculateSceneStrokeWidth();
   }
 
-  getScreenX(worldX: number): number {
+  getActiveAddButtonStyle(): Record<string, string> {
     const metrics = this.getSceneRenderMetrics();
-    return Number((metrics.offsetX + ((worldX - this.cfg.viewPortX) * metrics.scale)).toFixed(4));
-  }
-
-  getScreenY(worldY: number): number {
-    const metrics = this.getSceneRenderMetrics();
-    return Number((metrics.offsetY + ((worldY - this.cfg.viewPortY) * metrics.scale)).toFixed(4));
+    const target = focusedItemTargetScreenPoint(this.activeViewBox, this.focusedItem, this.cfg, metrics);
+    return {
+      left: `${6 + target.x}px`,
+      top: `${6 + target.y}px`
+    };
   }
 
   insert(type: SvgCommandTypeAny, after: SvgItem | null, convert: boolean) {
@@ -976,6 +996,23 @@ export class AppComponent implements AfterViewInit {
     this.updateViewPort(0, 0, viewPortWidth, viewPortHeight, true);
   }
 
+
+  private getSceneRenderMetrics(): { scale: number; offsetX: number; offsetY: number } {
+    if (this.canvasWidth <= 0 || this.canvasHeight <= 0 || this.cfg.viewPortWidth <= 0 || this.cfg.viewPortHeight <= 0) {
+      return { scale: 1, offsetX: 0, offsetY: 0 };
+    }
+
+    const scale = Math.min(this.canvasWidth / this.cfg.viewPortWidth, this.canvasHeight / this.cfg.viewPortHeight);
+    const offsetX = (this.canvasWidth - (this.cfg.viewPortWidth * scale)) / 2;
+    const offsetY = (this.canvasHeight - (this.cfg.viewPortHeight * scale)) / 2;
+    return { scale, offsetX, offsetY };
+  }
+
+  private recalculateSceneStrokeWidth(): void {
+    const metrics = this.getSceneRenderMetrics();
+    this.strokeWidth = metrics.scale > 0 ? (1 / metrics.scale) : 1;
+  }
+
   private finishViewBoxDrag(pointerId: number): void {
     const dragState = this.viewBoxDrag;
     if (!dragState || dragState.pointerId !== pointerId) return;
@@ -1169,27 +1206,6 @@ export class AppComponent implements AfterViewInit {
       textarea.remove();
     }
     return copied;
-  }
-
-  private getSceneRenderMetrics(): { scale: number; offsetX: number; offsetY: number } {
-    if (this.canvasWidth <= 0 || this.canvasHeight <= 0 || this.cfg.viewPortWidth <= 0 || this.cfg.viewPortHeight <= 0) {
-      return { scale: 1, offsetX: 0, offsetY: 0 };
-    }
-
-    const scale = Math.min(this.canvasWidth / this.cfg.viewPortWidth, this.canvasHeight / this.cfg.viewPortHeight);
-    const offsetX = (this.canvasWidth - (this.cfg.viewPortWidth * scale)) / 2;
-    const offsetY = (this.canvasHeight - (this.cfg.viewPortHeight * scale)) / 2;
-
-    return {
-      scale: Number(scale.toFixed(6)),
-      offsetX: Number(offsetX.toFixed(4)),
-      offsetY: Number(offsetY.toFixed(4))
-    };
-  }
-
-  private refreshCanvasDerivedMetrics(): void {
-    const { scale } = this.getSceneRenderMetrics();
-    this.strokeWidth = scale > 0 ? Number((1 / scale).toFixed(6)) : 1;
   }
 
   private persistViewBoxes(): void { this.storage.setViewBoxes(this.viewBoxes.map((viewBox) => this.serializeViewBox(viewBox))); }
