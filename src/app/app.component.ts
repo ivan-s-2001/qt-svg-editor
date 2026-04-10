@@ -15,6 +15,14 @@ import { reversePath } from '../lib/reverse-path';
 import { optimizePath } from '../lib/optimize-path';
 import { changePathOrigin } from 'src/lib/change-path-origin';
 import { KEYBOARD } from './constants/keyboard.const';
+import {
+  buildPatchLocalViewPort,
+  normalizePatchContourMode,
+  normalizePatchGeometry,
+  PatchContourMode,
+  PatchDisplayBox,
+  NormalizedPatchGeometry
+} from './patch-render-utils';
 
 export const kDefaultPath = `M 4 8 L 10 1 L 13 0 L 12 3 L 5 9 C 6 10 6 11 7 10 C 7 11 8 12 7 12 A 1.42 1.42 0 0 1 6 13 `
 + `A 5 5 0 0 0 4 10 Q 3.5 9.9 3.5 10.5 T 2 11.8 T 1.2 11 T 2.5 9.5 T 3 9 A 5 5 90 0 0 0 7 A 1.42 1.42 0 0 1 1 6 `
@@ -45,6 +53,8 @@ type ViewBoxDragState = {
 
 type ViewBoxHistoryEntry = {
   rawPath: string;
+  strokeWidth: number;
+  contourMode: PatchContourMode;
   viewBox: {
     x: number;
     y: number;
@@ -56,8 +66,14 @@ type ViewBoxHistoryEntry = {
 type ViewBoxPatchContext = {
   rawPath: string;
   parsedPath: SvgPath;
+  displayPath: string;
   targetPoints: SvgPoint[];
   controlPoints: SvgControlPoint[];
+  strokeWidth: number;
+  contourMode: PatchContourMode;
+  strokeLinejoin: string | null;
+  strokeLinecap: string | null;
+  displayBox: PatchDisplayBox | null;
   history: ViewBoxHistoryEntry[];
   historyCursor: number;
   localViewPort: {
@@ -78,7 +94,6 @@ type ViewBoxEntity = {
   createdAt: string;
   patch: ViewBoxPatchContext;
 };
-
 
 const DEFAULT_HALL_CSS = `.hall {position:relative}
 .hall * {-webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}
@@ -103,15 +118,12 @@ const DEFAULT_HALL_CSS = `.hall {position:relative}
 .color_timebook_long_online, .hall .c9_1 {background:#ff7a00;}
 .color_timebook_short_online, .hall .c8_1 {background:#ffff08}`;
 
-
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
   animations: [
-    trigger('leftColumnParent', [
-      transition(':enter', [])
-    ]),
+    trigger('leftColumnParent', [transition(':enter', [])]),
     trigger('leftColumn', [
       state('*', style({ 'max-width': '368px' })),
       transition(':enter', [style({ 'max-width': '0' }), animate('100ms ease')]),
@@ -171,12 +183,15 @@ export class AppComponent implements AfterViewInit {
   isContextualMenuOpened = false;
   isEditingImages = false;
   isViewBoxExportPopupOpen = false;
-  isViewBoxExportCopied = false;
   isViewBoxSqlExportCopied = false;
   isAllViewBoxesExportPopupOpen = false;
   isAllViewBoxesExportCopied = false;
   viewBoxExportHallIdValue = '';
   allViewBoxesExportHallIdValue = '';
+  readonly emptyWorkspaceSize = 1000;
+
+
+  private pendingActiveViewBoxId: string | null = null;
 
   max = Math.max;
   trackByIndex = (idx: number, _: unknown) => idx;
@@ -205,7 +220,13 @@ export class AppComponent implements AfterViewInit {
     }
 
     this.viewBoxes = this.storage.getViewBoxes().map((viewBox) => this.inflateViewBox(viewBox));
-    this.activateViewBox(this.resolveInitialActiveViewBoxId());
+    const initialActiveViewBoxId = this.resolveInitialActiveViewBoxId();
+    if (this.hasHall) {
+      this.activateViewBox(initialActiveViewBoxId);
+    } else {
+      this.pendingActiveViewBoxId = initialActiveViewBoxId;
+      this.resetEditorState();
+    }
   }
 
   @HostListener('document:keydown', ['$event']) onKeyDown($event: KeyboardEvent) {
@@ -217,7 +238,6 @@ export class AppComponent implements AfterViewInit {
         $event.preventDefault();
         return;
       }
-
       if (this.isAllViewBoxesExportPopupOpen) {
         this.closeAllViewBoxesExportPopup();
         $event.preventDefault();
@@ -225,7 +245,7 @@ export class AppComponent implements AfterViewInit {
       }
     }
 
-    if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
       if ($event.shiftKey && ($event.metaKey || $event.ctrlKey) && $event.key.toLowerCase() === KEYBOARD.KEYS.UNDO) {
         this.redo();
         $event.preventDefault();
@@ -296,114 +316,74 @@ export class AppComponent implements AfterViewInit {
     $event.preventDefault();
   }
 
-  @HostListener('document:pointerup', ['$event']) onPointerUp($event: PointerEvent) {
-    this.finishViewBoxDrag($event.pointerId);
-  }
+  @HostListener('document:pointerup', ['$event']) onPointerUp($event: PointerEvent) { this.finishViewBoxDrag($event.pointerId); }
+  @HostListener('document:pointercancel', ['$event']) onPointerCancel($event: PointerEvent) { this.finishViewBoxDrag($event.pointerId); }
 
-  @HostListener('document:pointercancel', ['$event']) onPointerCancel($event: PointerEvent) {
-    this.finishViewBoxDrag($event.pointerId);
-  }
-
-  get decimals() {
-    return this.cfg.snapToGrid ? 0 : this.cfg.decimalPrecision;
-  }
-
-  get hasHall(): boolean {
-    return this.hallWidth > 0 && this.hallHeight > 0 && !!this.hallHtml;
-  }
-
-  get activeViewBox(): ViewBoxEntity | null {
-    return this.viewBoxes.find((viewBox) => viewBox.id === this.activeViewBoxId) || null;
-  }
-
-  get hallPanelInfo(): string {
-    return this.hasHall ? `${this.hallWidth}×${this.hallHeight}` : 'не загружено';
-  }
-
-  get hallLayerScale(): number {
-    return this.strokeWidth > 0 ? 1 / this.strokeWidth : 1;
-  }
-
+  get decimals() { return this.cfg.snapToGrid ? 0 : this.cfg.decimalPrecision; }
+  get hasHall(): boolean { return this.hallWidth > 0 && this.hallHeight > 0 && !!this.hallHtml; }
+  get showEmptyHallState(): boolean { return !this.hasHall; }
+  get sceneWorkspaceWidth(): number { return this.hasHall ? this.hallWidth : this.emptyWorkspaceSize; }
+  get sceneWorkspaceHeight(): number { return this.hasHall ? this.hallHeight : this.emptyWorkspaceSize; }
+  get activeViewBox(): ViewBoxEntity | null { return this.viewBoxes.find((viewBox) => viewBox.id === this.activeViewBoxId) || null; }
+  get hallLayerScale(): number { return this.getSceneRenderMetrics().scale; }
   get hallLayerOffsetX(): number {
-    return this.strokeWidth > 0 ? -this.cfg.viewPortX / this.strokeWidth : 0;
+    const metrics = this.getSceneRenderMetrics();
+    return Number((metrics.offsetX - (this.cfg.viewPortX * metrics.scale)).toFixed(4));
   }
-
   get hallLayerOffsetY(): number {
-    return this.strokeWidth > 0 ? -this.cfg.viewPortY / this.strokeWidth : 0;
+    const metrics = this.getSceneRenderMetrics();
+    return Number((metrics.offsetY - (this.cfg.viewPortY * metrics.scale)).toFixed(4));
+  }
+  get canCreateViewBox(): boolean { return this.newViewBox.width > 0 && this.newViewBox.height > 0; }
+  get activePatchOffsetX(): number { return this.activeViewBox?.x || 0; }
+  get activePatchOffsetY(): number { return this.activeViewBox?.y || 0; }
+  get activePatchWidth(): number { return this.activeViewBox?.width || 0; }
+  get activePatchHeight(): number { return this.activeViewBox?.height || 0; }
+  get activePatchStrokeWidth(): number { return this.activeViewBox?.patch.strokeWidth || 1; }
+  get activePatchDisplayPath(): string { return this.activeViewBox?.patch.displayPath || ''; }
+  get activePatchStrokeLinejoin(): string | null { return this.activeViewBox?.patch.strokeLinejoin || null; }
+  get activePatchStrokeLinecap(): string | null { return this.activeViewBox?.patch.strokeLinecap || null; }
+  get activePatchContourMode(): PatchContourMode { return this.activeViewBox?.patch.contourMode || 'center'; }
+  get activePatchViewBoxX(): number { return this.activeViewBox?.patch.localViewPort.x || 0; }
+  get activePatchViewBoxY(): number { return this.activeViewBox?.patch.localViewPort.y || 0; }
+  get activePatchInnerOffsetX(): number { return -this.activePatchViewBoxX; }
+  get activePatchInnerOffsetY(): number { return -this.activePatchViewBoxY; }
+  get activeViewBoxSqlExportText(): string { return this.activeViewBox ? this.buildViewBoxesSqlInsert([this.activeViewBox], this.viewBoxExportHallIdValue) : ''; }
+  get allViewBoxesSqlExportText(): string { return this.buildViewBoxesSqlInsert(this.viewBoxes, this.allViewBoxesExportHallIdValue); }
+
+  formatPatchViewBox(viewBox: ViewBoxEntity): string {
+    const local = viewBox.patch.localViewPort;
+    return `${this.formatPatchViewBoxValue(local.x)} ${this.formatPatchViewBoxValue(local.y)} ${this.formatPatchViewBoxValue(local.width)} ${this.formatPatchViewBoxValue(local.height)}`;
   }
 
-  get viewBoxPanelInfo(): string {
-    return this.viewBoxes.length.toString();
+  formatPatchViewBoxValue(value: number): string { return formatNumber(value, 4); }
+  formatPatchDisplayBox(viewBox: ViewBoxEntity): string {
+    const displayBox = viewBox.patch.displayBox;
+    if (!displayBox) return '—';
+    return `${this.formatPatchViewBoxValue(displayBox.x)} ${this.formatPatchViewBoxValue(displayBox.y)} ${this.formatPatchViewBoxValue(displayBox.width)} ${this.formatPatchViewBoxValue(displayBox.height)}`;
   }
-
-  get activeViewBoxPanelInfo(): string {
-    return this.activeViewBox ? this.activeViewBox.name : 'не выбран';
+  getPatchContourModeLabel(mode: PatchContourMode): string {
+    if (mode === 'outside') return 'снаружи';
+    if (mode === 'inside') return 'внутри';
+    return 'из центра';
   }
-
-  get canCreateViewBox(): boolean {
-    return this.newViewBox.width > 0 && this.newViewBox.height > 0;
-  }
-
-  get activePatchOffsetX(): number {
-    return this.activeViewBox?.x || 0;
-  }
-
-  get activePatchOffsetY(): number {
-    return this.activeViewBox?.y || 0;
-  }
-
-  get activePatchWidth(): number {
-    return this.activeViewBox?.width || 0;
-  }
-
-  get activePatchHeight(): number {
-    return this.activeViewBox?.height || 0;
-  }
-
-  get activeViewBoxCenterX(): number {
-    return this.activeViewBox ? this.activeViewBox.width / 2 : 0;
-  }
-
-  get activeViewBoxCenterY(): number {
-    return this.activeViewBox ? this.activeViewBox.height / 2 : 0;
-  }
-
-
-
-
-  get activeViewBoxSqlExportText(): string {
-    const activeViewBox = this.activeViewBox;
-    if (!activeViewBox) {
-      return '';
-    }
-
-    return this.buildViewBoxesSqlInsert([activeViewBox], this.viewBoxExportHallIdValue);
-  }
-
-  get allViewBoxesSqlExportText(): string {
-    return this.buildViewBoxesSqlInsert(this.viewBoxes, this.allViewBoxesExportHallIdValue);
-  }
-
-  isDraggingViewBoxLabel(viewBoxId: string): boolean {
-    return this.viewBoxDrag?.viewBoxId === viewBoxId;
-  }
+  isDraggingViewBoxLabel(viewBoxId: string): boolean { return this.viewBoxDrag?.viewBoxId === viewBoxId; }
 
   ngAfterViewInit() {
     setTimeout(() => {
-      this.zoomAuto();
+      if (this.hasHall) {
+        this.restoreViewBoxSelectionAfterHallLoad();
+        this.zoomAuto();
+      } else {
+        this.showEmptyWorkspace();
+      }
     }, 0);
   }
-
-  get rawPath(): string {
-    return this._rawPath;
-  }
-
+  get rawPath(): string { return this._rawPath; }
   set rawPath(value: string) {
     this._rawPath = value;
     const patch = this.getActivePatchContext();
-    if (patch) {
-      patch.rawPath = value;
-    }
+    if (patch) { patch.rawPath = value; }
     this.pushHistory();
   }
 
@@ -415,15 +395,8 @@ export class AppComponent implements AfterViewInit {
       this.persistViewBoxes();
     }
   }
-
-  setCursorPosition(position?: Point & { decimals?: number }) {
-    this.cursorPosition = position;
-  }
-
-  setHoverPosition(position?: Point) {
-    this.hoverPosition = position;
-  }
-
+  setCursorPosition(position?: Point & { decimals?: number }) { this.cursorPosition = position; }
+  setHoverPosition(position?: Point) { this.hoverPosition = position; }
   setHistoryDisabled(value: boolean) {
     this.historyDisabled = value;
     if (!value) {
@@ -433,16 +406,10 @@ export class AppComponent implements AfterViewInit {
   }
 
   pushHistory() {
-    if (this.historyDisabled) {
-      return;
-    }
-
+    if (this.historyDisabled) return;
     const nextEntry = this.createCurrentHistoryEntry();
     const currentEntry = this.history[this.historyCursor];
-
-    if (currentEntry && this.areHistoryEntriesEqual(currentEntry, nextEntry)) {
-      return;
-    }
+    if (currentEntry && this.areHistoryEntriesEqual(currentEntry, nextEntry)) return;
 
     this.historyCursor++;
     this.history.splice(this.historyCursor, this.history.length - this.historyCursor, nextEntry);
@@ -456,10 +423,7 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
-  canUndo(): boolean {
-    return this.historyCursor > 0 && !this.isEditingImages && !!this.activeViewBox;
-  }
-
+  canUndo(): boolean { return this.historyCursor > 0 && !this.isEditingImages && !!this.activeViewBox; }
   undo() {
     if (this.canUndo()) {
       this.historyDisabled = true;
@@ -470,10 +434,7 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
-  canRedo(): boolean {
-    return this.historyCursor < this.history.length - 1 && !this.isEditingImages && !!this.activeViewBox;
-  }
-
+  canRedo(): boolean { return this.historyCursor < this.history.length - 1 && !this.isEditingImages && !!this.activeViewBox; }
   redo() {
     if (this.canRedo()) {
       this.historyDisabled = true;
@@ -485,107 +446,106 @@ export class AppComponent implements AfterViewInit {
   }
 
   updateViewPort(x: number, y: number, w: number | null, h: number | null, force = false) {
-    if (!force && this.cfg.viewPortLocked) {
-      return;
-    }
-    if (w === null && h !== null) {
-      w = this.canvasWidth * h / this.canvasHeight;
-    }
-    if (h === null && w !== null) {
-      h = this.canvasHeight * w / this.canvasWidth;
-    }
-    if (!w || !h) {
-      return;
-    }
+    if (!force && this.cfg.viewPortLocked) return;
+    if (w === null && h !== null) w = this.canvasWidth * h / this.canvasHeight;
+    if (h === null && w !== null) h = this.canvasHeight * w / this.canvasWidth;
+    if (!w || !h) return;
 
     this.cfg.viewPortX = parseFloat((1 * x).toPrecision(6));
     this.cfg.viewPortY = parseFloat((1 * y).toPrecision(6));
     this.cfg.viewPortWidth = parseFloat((1 * w).toPrecision(4));
     this.cfg.viewPortHeight = parseFloat((1 * h).toPrecision(4));
-    this.strokeWidth = this.cfg.viewPortWidth / this.canvasWidth;
+    this.refreshCanvasDerivedMetrics();
+  }
+
+  onCanvasWidthChange(width: number): void {
+    this.canvasWidth = width || this.canvasWidth;
+    this.refreshCanvasDerivedMetrics();
+  }
+
+  onCanvasHeightChange(height: number): void {
+    this.canvasHeight = height;
+    this.refreshCanvasDerivedMetrics();
+  }
+
+  getScreenX(worldX: number): number {
+    const metrics = this.getSceneRenderMetrics();
+    return Number((metrics.offsetX + ((worldX - this.cfg.viewPortX) * metrics.scale)).toFixed(4));
+  }
+
+  getScreenY(worldY: number): number {
+    const metrics = this.getSceneRenderMetrics();
+    return Number((metrics.offsetY + ((worldY - this.cfg.viewPortY) * metrics.scale)).toFixed(4));
   }
 
   insert(type: SvgCommandTypeAny, after: SvgItem | null, convert: boolean) {
-    if (!this.activeViewBox) {
-      return;
-    }
-
+    if (!this.activeViewBox) return;
     if (convert) {
       if (after) {
         this.focusedItem = this.parsedPath.changeType(after, (after.relative ? type.toLowerCase() as SvgCommandTypeAny : type));
         this.afterModelChange();
       }
+      return;
+    }
+
+    this.draggedIsNew = true;
+    const pts = this.targetPoints;
+    let point1: Point;
+    let newItem: SvgItem | null = null;
+    if (after) {
+      point1 = after.targetLocation();
+    } else if (pts.length === 0) {
+      newItem = SvgItem.Make(['M', '0', '0']);
+      this.parsedPath.insert(newItem);
+      point1 = new Point(0, 0);
     } else {
-      this.draggedIsNew = true;
-      const pts = this.targetPoints;
-      let point1: Point;
+      point1 = pts[pts.length - 1];
+    }
 
-      let newItem: SvgItem | null = null;
-      if (after) {
-        point1 = after.targetLocation();
-      } else if (pts.length === 0) {
-        newItem = SvgItem.Make(['M', '0', '0']);
-        this.parsedPath.insert(newItem);
-        point1 = new Point(0, 0);
-      } else {
-        point1 = pts[pts.length - 1];
+    if (type.toLowerCase() !== 'm' || !newItem) {
+      const relative = type.toLowerCase() === type;
+      const X = (relative ? 0 : point1.x).toString();
+      const Y = (relative ? 0 : point1.y).toString();
+      switch (type.toLocaleLowerCase()) {
+        case 'm': case 'l': case 't': newItem = SvgItem.Make([type, X, Y]); break;
+        case 'h': newItem = SvgItem.Make([type, X]); break;
+        case 'v': newItem = SvgItem.Make([type, Y]); break;
+        case 's': case 'q': newItem = SvgItem.Make([type, X, Y, X, Y]); break;
+        case 'c': newItem = SvgItem.Make([type, X, Y, X, Y, X, Y]); break;
+        case 'a': newItem = SvgItem.Make([type, '1', '1', '0', '0', '0', X, Y]); break;
+        case 'z': newItem = SvgItem.Make([type]);
       }
-
-      if (type.toLowerCase() !== 'm' || !newItem) {
-        const relative = type.toLowerCase() === type;
-        const X = (relative ? 0 : point1.x).toString();
-        const Y = (relative ? 0 : point1.y).toString();
-        switch (type.toLocaleLowerCase()) {
-          case 'm': case 'l': case 't':
-            newItem = SvgItem.Make([type, X, Y]); break;
-          case 'h':
-            newItem = SvgItem.Make([type, X]); break;
-          case 'v':
-            newItem = SvgItem.Make([type, Y]); break;
-          case 's': case 'q':
-            newItem = SvgItem.Make([type, X, Y, X, Y]); break;
-          case 'c':
-            newItem = SvgItem.Make([type, X, Y, X, Y, X, Y]); break;
-          case 'a':
-            newItem = SvgItem.Make([type, '1', '1', '0', '0', '0', X, Y]); break;
-          case 'z':
-            newItem = SvgItem.Make([type]);
-        }
-        if (newItem) {
-          this.parsedPath.insert(newItem, after ?? undefined);
-        }
-      }
-      this.setHistoryDisabled(true);
-      this.afterModelChange();
-
-      if (newItem) {
-        this.focusedItem = newItem;
-        this.draggedPoint = newItem.targetLocation();
-      }
+      if (newItem) this.parsedPath.insert(newItem, after ?? undefined);
+    }
+    this.setHistoryDisabled(true);
+    this.afterModelChange();
+    if (newItem) {
+      this.focusedItem = newItem;
+      this.draggedPoint = newItem.targetLocation();
     }
   }
 
   zoomAuto() {
-    if (this.cfg.viewPortLocked) {
-      return;
-    }
-
+    if (this.cfg.viewPortLocked) return;
     if (this.hasHall) {
       let w = this.hallWidth;
       let h = this.hallHeight;
-
       if (this.canvasWidth > 0 && this.canvasHeight > 0) {
         const canvasRatio = this.canvasHeight / this.canvasWidth;
         const hallRatio = h / w;
-
-        if (canvasRatio < hallRatio) {
-          w = h / canvasRatio;
-        } else {
-          h = canvasRatio * w;
-        }
+        if (canvasRatio < hallRatio) w = h / canvasRatio; else h = canvasRatio * w;
       }
-
       this.updateViewPort(0, 0, w, h, true);
+      return;
+    }
+
+    const activeDisplayBox = this.activeViewBox?.patch.displayBox;
+    if (activeDisplayBox) {
+      const k = this.canvasHeight / this.canvasWidth;
+      let w = activeDisplayBox.width + 2;
+      let h = activeDisplayBox.height + 2;
+      if (k < h / w) w = h / k; else h = k * w;
+      this.updateViewPort(activeDisplayBox.x - 1, activeDisplayBox.y - 1, w, h, true);
       return;
     }
 
@@ -593,25 +553,17 @@ export class AppComponent implements AfterViewInit {
       this.updateViewPort(0, 0, 100, 100, true);
       return;
     }
-
     const bbox = browserComputePathBoundingBox(this.rawPath);
     const k = this.canvasHeight / this.canvasWidth;
     let w = bbox.width + 2;
     let h = bbox.height + 2;
-    if (k < h / w) {
-      w = h / k;
-    } else {
-      h = k * w;
-    }
-
+    if (k < h / w) w = h / k; else h = k * w;
     this.updateViewPort(bbox.x - 1, bbox.y - 1, w, h);
   }
 
   scale(x: number, y: number) {
     const viewBox = this.activeViewBox;
-    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y) || x === 0 || y === 0 || (x === 1 && y === 1)) {
-      return;
-    }
+    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y) || x === 0 || y === 0 || (x === 1 && y === 1)) return;
 
     const currentX = viewBox.x;
     const currentY = viewBox.y;
@@ -625,10 +577,7 @@ export class AppComponent implements AfterViewInit {
     const localOriginOffsetY = -Math.min(0, nextHeight);
 
     this.parsedPath.scale(x, y);
-
-    if (localOriginOffsetX !== 0 || localOriginOffsetY !== 0) {
-      this.parsedPath.translate(localOriginOffsetX, localOriginOffsetY);
-    }
+    if (localOriginOffsetX !== 0 || localOriginOffsetY !== 0) this.parsedPath.translate(localOriginOffsetX, localOriginOffsetY);
 
     const nextX = Math.floor(worldLeft);
     const nextY = Math.floor(worldTop);
@@ -636,15 +585,13 @@ export class AppComponent implements AfterViewInit {
     const nextBottom = Math.ceil(worldBottom);
     const localOffsetX = worldLeft - nextX;
     const localOffsetY = worldTop - nextY;
-
-    if (localOffsetX !== 0 || localOffsetY !== 0) {
-      this.parsedPath.translate(localOffsetX, localOffsetY);
-    }
+    if (localOffsetX !== 0 || localOffsetY !== 0) this.parsedPath.translate(localOffsetX, localOffsetY);
 
     viewBox.x = nextX;
     viewBox.y = nextY;
     viewBox.width = Math.max(1, nextRight - nextX);
     viewBox.height = Math.max(1, nextBottom - nextY);
+    this.syncPatchDisplayAndLocalToCurrentSize(viewBox);
 
     this.scaleX = 1;
     this.scaleY = 1;
@@ -654,54 +601,46 @@ export class AppComponent implements AfterViewInit {
 
   translate(x: number, y: number) {
     const viewBox = this.activeViewBox;
-    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y) || (x === 0 && y === 0)) {
-      return;
-    }
-
-    viewBox.x = this.normalizeViewBoxCoordinate(viewBox.x + x);
-    viewBox.y = this.normalizeViewBoxCoordinate(viewBox.y + y);
-
+    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y) || (x === 0 && y === 0)) return;
+    this.parsedPath.translate(x, y);
     this.translateX = 0;
     this.translateY = 0;
-    this.viewBoxes = [...this.viewBoxes];
     this.afterModelChange();
   }
 
   rotate(angle: number) {
     const viewBox = this.activeViewBox;
-    if (!viewBox || !Number.isFinite(angle) || angle === 0 || this.parsedPath.path.length === 0) {
-      return;
-    }
+    if (!viewBox || !Number.isFinite(angle) || angle === 0 || this.parsedPath.path.length === 0) return;
 
     const currentX = viewBox.x;
     const currentY = viewBox.y;
+    const currentBBox = this.getParsedPathBoundingBox();
+    if (!currentBBox) return;
 
-    this.parsedPath.rotate(viewBox.width / 2, viewBox.height / 2, angle);
+    const rotateCenterX = currentBBox.x + (currentBBox.width / 2);
+    const rotateCenterY = currentBBox.y + (currentBBox.height / 2);
+    this.parsedPath.rotate(rotateCenterX, rotateCenterY, angle);
 
     const bbox = this.getParsedPathBoundingBox();
-    if (!bbox) {
-      return;
-    }
+    if (!bbox) return;
 
     const worldLeft = currentX + bbox.x;
     const worldTop = currentY + bbox.y;
     const worldRight = worldLeft + bbox.width;
     const worldBottom = worldTop + bbox.height;
-
     const nextX = Math.floor(worldLeft);
     const nextY = Math.floor(worldTop);
     const nextRight = Math.ceil(worldRight);
     const nextBottom = Math.ceil(worldBottom);
-
     const localOffsetX = worldLeft - nextX;
     const localOffsetY = worldTop - nextY;
 
     this.parsedPath.translate(-bbox.x + localOffsetX, -bbox.y + localOffsetY);
-
     viewBox.x = nextX;
     viewBox.y = nextY;
     viewBox.width = Math.max(1, nextRight - nextX);
     viewBox.height = Math.max(1, nextBottom - nextY);
+    this.syncPatchDisplayAndLocalToCurrentSize(viewBox);
 
     this.rotateAngle = 0;
     this.viewBoxes = [...this.viewBoxes];
@@ -710,229 +649,131 @@ export class AppComponent implements AfterViewInit {
 
   fitViewBoxToPatch() {
     const viewBox = this.activeViewBox;
-    if (!viewBox || this.parsedPath.path.length === 0) {
-      return;
-    }
-
-    const bbox = this.getParsedPathBoundingBox();
-    if (!bbox) {
-      return;
-    }
-
-    const shiftX = -bbox.x;
-    const shiftY = -bbox.y;
-
-    if (shiftX !== 0 || shiftY !== 0) {
-      this.parsedPath.translate(shiftX, shiftY);
-    }
-
-    viewBox.width = this.normalizeViewBoxSize(Math.ceil(bbox.width));
-    viewBox.height = this.normalizeViewBoxSize(Math.ceil(bbox.height));
-    viewBox.patch.localViewPort = {
-      x: 0,
-      y: 0,
-      width: viewBox.width,
-      height: viewBox.height
-    };
-
+    if (!viewBox || this.parsedPath.path.length === 0) return;
+    this.recalculatePatchLayout(viewBox, { allowShrink: true, normalizePath: true, persist: true, syncEditor: true, localViewPortMode: 'full' });
     this.viewBoxes = [...this.viewBoxes];
-    this.afterModelChange();
     this.pushHistory();
   }
 
-  setRelative(rel: boolean) {
-    if (!this.activeViewBox) {
+  updatePatchStrokeWidth(viewBoxId: string, value: number): void {
+    const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
+    if (!viewBox || Number.isNaN(value)) return;
+    const normalizedStrokeWidth = this.normalizePatchStrokeWidth(value);
+    if (viewBox.patch.strokeWidth === normalizedStrokeWidth) return;
+
+    viewBox.patch.strokeWidth = normalizedStrokeWidth;
+    this.recalculatePatchLayout(viewBox, { allowShrink: false, normalizePath: true, persist: true, syncEditor: this.activeViewBoxId === viewBoxId, localViewPortMode: 'offsets' });
+    this.viewBoxes = [...this.viewBoxes];
+    if (this.activeViewBoxId === viewBoxId) {
+      this.pushHistory();
       return;
     }
-    this.parsedPath.setRelative(rel);
-    this.afterModelChange();
+    this.persistViewBoxes();
   }
 
-  reverse() {
-    if (!this.activeViewBox) {
+  updatePatchContourMode(viewBoxId: string, value: PatchContourMode | string): void {
+    const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
+    if (!viewBox) return;
+    const contourMode = normalizePatchContourMode(value);
+    if (viewBox.patch.contourMode === contourMode) return;
+
+    viewBox.patch.contourMode = contourMode;
+    this.recalculatePatchLayout(viewBox, { allowShrink: false, normalizePath: true, persist: true, syncEditor: this.activeViewBoxId === viewBoxId, localViewPortMode: 'offsets' });
+    this.viewBoxes = [...this.viewBoxes];
+    if (this.activeViewBoxId === viewBoxId) {
+      this.pushHistory();
       return;
     }
-    reversePath(this.parsedPath);
-    this.afterModelChange();
+    this.persistViewBoxes();
   }
 
+  setRelative(rel: boolean) { if (this.activeViewBox) { this.parsedPath.setRelative(rel); this.afterModelChange(); } }
+  reverse() { if (this.activeViewBox) { reversePath(this.parsedPath); this.afterModelChange(); } }
   optimize() {
-    if (!this.activeViewBox) {
-      return;
-    }
-    optimizePath(this.parsedPath, {
-      removeUselessCommands: true,
-      useHorizontalAndVerticalLines: true,
-      useRelativeAbsolute: true,
-      useReverse: true,
-      useShorthands: true
-    });
+    if (!this.activeViewBox) return;
+    optimizePath(this.parsedPath, { removeUselessCommands: true, useHorizontalAndVerticalLines: true, useRelativeAbsolute: true, useReverse: true, useShorthands: true });
     this.cfg.minifyOutput = true;
     this.afterModelChange();
   }
-
-  setValue(item: SvgItem, idx: number, val: number) {
-    if (!this.activeViewBox) {
-      return;
-    }
-    if (!isNaN(val)) {
-      item.values[idx] = val;
-      this.parsedPath.refreshAbsolutePositions();
-      this.afterModelChange();
-    }
-  }
-
-  delete(item: SvgItem) {
-    if (!this.activeViewBox) {
-      return;
-    }
-    this.focusedItem = null;
-    this.parsedPath.delete(item);
-    this.afterModelChange();
-  }
-
-  useAsOrigin(item: SvgItem, subpathOnly?: boolean) {
-    if (!this.activeViewBox) {
-      return;
-    }
-    const idx = this.parsedPath.path.indexOf(item);
-    changePathOrigin(this.parsedPath, idx, subpathOnly);
-    this.afterModelChange();
-    this.focusedItem = null;
-  }
-
-  reverseSubPath(item: SvgItem) {
-    if (!this.activeViewBox) {
-      return;
-    }
-    const idx = this.parsedPath.path.indexOf(item);
-    reversePath(this.parsedPath, idx);
-    this.afterModelChange();
-    this.focusedItem = null;
-  }
+  setValue(item: SvgItem, idx: number, val: number) { if (this.activeViewBox && !isNaN(val)) { item.values[idx] = val; this.parsedPath.refreshAbsolutePositions(); this.afterModelChange(); } }
+  delete(item: SvgItem) { if (this.activeViewBox) { this.focusedItem = null; this.parsedPath.delete(item); this.afterModelChange(); } }
+  useAsOrigin(item: SvgItem, subpathOnly?: boolean) { if (this.activeViewBox) { const idx = this.parsedPath.path.indexOf(item); changePathOrigin(this.parsedPath, idx, subpathOnly); this.afterModelChange(); this.focusedItem = null; } }
+  reverseSubPath(item: SvgItem) { if (this.activeViewBox) { const idx = this.parsedPath.path.indexOf(item); reversePath(this.parsedPath, idx); this.afterModelChange(); this.focusedItem = null; } }
 
   afterModelChange() {
     this.reloadPoints();
     this.rawPath = this.parsedPath.asString(4, this.cfg.minifyOutput);
+    const activeViewBox = this.activeViewBox;
+    if (activeViewBox) {
+      this.recalculatePatchLayout(activeViewBox, { allowShrink: false, normalizePath: false, persist: false, syncEditor: false, localViewPortMode: 'none' });
+    }
     this.syncActivePatchFromEditor();
   }
 
-  roundValues(decimals: number) {
-    if (!this.activeViewBox) {
-      return;
-    }
-    this.reloadPath(this.parsedPath.asString(decimals, this.cfg.minifyOutput));
-  }
-
-  canDelete(item: SvgItem): boolean {
-    const idx = this.parsedPath.path.indexOf(item);
-    return idx > 0;
-  }
-
-  canInsertAfter(item: SvgItem | null, type: SvgCommandType): boolean {
-    let previousType: SvgCommandType | null = null;
-    if (item !== null) {
-      previousType = item.getType().toUpperCase() as SvgCommandType;
-    } else if (this.parsedPath.path.length > 0) {
-      previousType = this.parsedPath.path[this.parsedPath.path.length - 1].getType().toUpperCase() as SvgCommandType;
-    }
-    if (!previousType) {
-      return type !== 'Z';
-    }
-    if (previousType === 'M') {
-      return type !== 'M' && type !== 'Z' && type !== 'T' && type !== 'S';
-    }
-    if (previousType === 'Z') {
-      return type !== 'Z' && type !== 'T' && type !== 'S';
-    }
-    if (previousType === 'C' || previousType === 'S') {
-      return type !== 'T';
-    }
-    if (previousType === 'Q' || previousType === 'T') {
-      return type !== 'S';
-    }
-    return type !== 'T' && type !== 'S';
-  }
-
-  canConvert(item: SvgItem, to: SvgCommandType): boolean {
-    const idx = this.parsedPath.path.indexOf(item);
-    if (idx === 0) {
-      return false;
-    }
-    if (idx > 0) {
-      return this.canInsertAfter(this.parsedPath.path[idx - 1], to);
-    }
-    return false;
-  }
-
-  canUseAsOrigin(item: SvgItem): boolean {
-    return item.getType().toUpperCase() !== 'Z' && this.parsedPath.path.indexOf(item) > 1;
-  }
-
+  roundValues(decimals: number) { if (this.activeViewBox) this.reloadPath(this.parsedPath.asString(decimals, this.cfg.minifyOutput)); }
+  canDelete(item: SvgItem): boolean { return this.parsedPath.path.indexOf(item) > 0; }
+  canUseAsOrigin(item: SvgItem): boolean { return item.getType().toUpperCase() !== 'Z' && this.parsedPath.path.indexOf(item) > 1; }
   hasSubPaths(): boolean {
     let moveCount = 0;
     for (const command of this.parsedPath.path) {
       if (command.getType(true) === 'M') {
         moveCount++;
-        if (moveCount === 2) {
-          return true;
-        }
+        if (moveCount === 2) return true;
       }
     }
     return false;
   }
 
+  canInsertAfter(item: SvgItem | null, type: SvgCommandType): boolean {
+    let previousType: SvgCommandType | null = null;
+    if (item !== null) previousType = item.getType().toUpperCase() as SvgCommandType;
+    else if (this.parsedPath.path.length > 0) previousType = this.parsedPath.path[this.parsedPath.path.length - 1].getType().toUpperCase() as SvgCommandType;
+    if (!previousType) return type !== 'Z';
+    if (previousType === 'M') return type !== 'M' && type !== 'Z' && type !== 'T' && type !== 'S';
+    if (previousType === 'Z') return type !== 'Z' && type !== 'T' && type !== 'S';
+    if (previousType === 'C' || previousType === 'S') return type !== 'T';
+    if (previousType === 'Q' || previousType === 'T') return type !== 'S';
+    return type !== 'T' && type !== 'S';
+  }
+
+  canConvert(item: SvgItem, to: SvgCommandType): boolean {
+    const idx = this.parsedPath.path.indexOf(item);
+    if (idx === 0) return false;
+    if (idx > 0) return this.canInsertAfter(this.parsedPath.path[idx - 1], to);
+    return false;
+  }
+
   getTooltip(item: SvgItem, idx: number): string {
     const labels: Record<SvgCommandTypeAny, string[]> = {
-      'M': ['x', 'y'],
-      'm': ['dx', 'dy'],
-      'L': ['x', 'y'],
-      'l': ['dx', 'dy'],
-      'V': ['y'],
-      'v': ['dy'],
-      'H': ['x'],
-      'h': ['dx'],
-      'C': ['x1', 'y1', 'x2', 'y2', 'x', 'y'],
-      'c': ['dx1', 'dy1', 'dx2', 'dy2', 'dx', 'dy'],
-      'S': ['x2', 'y2', 'x', 'y'],
-      's': ['dx2', 'dy2', 'dx', 'dy'],
-      'Q': ['x1', 'y1', 'x', 'y'],
-      'q': ['dx1', 'dy1', 'dx', 'dy'],
-      'T': ['x', 'y'],
-      't': ['dx', 'dy'],
-      'A': ['rx', 'ry', 'x-axis-rotation', 'large-arc-flag', 'sweep-flag', 'x', 'y'],
-      'a': ['rx', 'ry', 'x-axis-rotation', 'large-arc-flag', 'sweep-flag', 'dx', 'dy'],
-      'Z': [],
-      'z': []
+      'M': ['x', 'y'], 'm': ['dx', 'dy'], 'L': ['x', 'y'], 'l': ['dx', 'dy'], 'V': ['y'], 'v': ['dy'], 'H': ['x'], 'h': ['dx'],
+      'C': ['x1', 'y1', 'x2', 'y2', 'x', 'y'], 'c': ['dx1', 'dy1', 'dx2', 'dy2', 'dx', 'dy'], 'S': ['x2', 'y2', 'x', 'y'], 's': ['dx2', 'dy2', 'dx', 'dy'],
+      'Q': ['x1', 'y1', 'x', 'y'], 'q': ['dx1', 'dy1', 'dx', 'dy'], 'T': ['x', 'y'], 't': ['dx', 'dy'],
+      'A': ['rx', 'ry', 'x-axis-rotation', 'large-arc-flag', 'sweep-flag', 'x', 'y'], 'a': ['rx', 'ry', 'x-axis-rotation', 'large-arc-flag', 'sweep-flag', 'dx', 'dy'], 'Z': [], 'z': []
     };
-    const commandType = item.getType() as SvgCommandTypeAny;
-    return labels[commandType][idx];
+    return labels[item.getType() as SvgCommandTypeAny][idx];
   }
 
-  openPath(newPath: string, name: string): void {
-    this.pathName = name;
-    this.history = [];
-    this.historyCursor = -1;
-    this.reloadPath(newPath, true);
-  }
-
-  reloadPath(newPath: string, autozoom = false): void {
-    this.hoveredItem = null;
-    this.focusedItem = null;
-    this.rawPath = newPath;
-    this.invalidSyntax = false;
+  openPath(newPath: string, name: string): void { this.pathName = name; this.history = []; this.historyCursor = -1; this.reloadPath(newPath, true); }
+  reloadPath(newPath: string, autozoom = false, updateLocalViewPortOffsets = false): void {
+    this.hoveredItem = null; this.focusedItem = null; this.rawPath = newPath; this.invalidSyntax = false;
     try {
       this.parsedPath = new SvgPath(this.rawPath);
       this.reloadPoints();
-      this.syncActivePatchFromEditor(false);
-      if (autozoom) {
-        this.zoomAuto();
+      const activeViewBox = this.activeViewBox;
+      if (activeViewBox) {
+        this.recalculatePatchLayout(activeViewBox, {
+          allowShrink: false,
+          normalizePath: false,
+          persist: false,
+          syncEditor: false,
+          localViewPortMode: updateLocalViewPortOffsets ? 'exact' : 'none'
+        });
       }
+      this.syncActivePatchFromEditor(false);
+      if (autozoom) this.zoomAuto();
     } catch {
       this.invalidSyntax = true;
-      if (!this.parsedPath) {
-        this.parsedPath = new SvgPath('');
-      }
+      if (!this.parsedPath) this.parsedPath = new SvgPath('');
     }
   }
 
@@ -942,34 +783,12 @@ export class AppComponent implements AfterViewInit {
     this.syncActivePatchFromEditor(false);
   }
 
-  toggleLeftPanel(): void {
-    this.isLeftPanelOpened = !this.isLeftPanelOpened;
-  }
-
-  deleteImage(image: Image): void {
-    this.images.splice(this.images.indexOf(image), 1);
-    this.focusedImage = null;
-  }
-
-  addImage(newImage: Image): void {
-    this.focusedImage = newImage;
-    this.images.push(newImage);
-  }
-
-  cancelAddImage(): void {
-    if (this.images.length === 0) {
-      this.isEditingImages = false;
-      this.focusedImage = null;
-    }
-  }
-
+  toggleLeftPanel(): void { this.isLeftPanelOpened = !this.isLeftPanelOpened; }
+  deleteImage(image: Image): void { this.images.splice(this.images.indexOf(image), 1); this.focusedImage = null; }
+  addImage(newImage: Image): void { this.focusedImage = newImage; this.images.push(newImage); }
+  cancelAddImage(): void { if (this.images.length === 0) { this.isEditingImages = false; this.focusedImage = null; } }
   toggleImageEditing(upload: UploadImageComponent): void {
-    this.isEditingImages = !this.isEditingImages;
-    this.focusedImage = null;
-    this.focusedItem = null;
-    if (this.isEditingImages && this.images.length === 0) {
-      upload.openDialog();
-    }
+    this.isEditingImages = !this.isEditingImages; this.focusedImage = null; this.focusedItem = null; if (this.isEditingImages && this.images.length === 0) upload.openDialog();
   }
 
   createViewBox(): void {
@@ -977,116 +796,49 @@ export class AppComponent implements AfterViewInit {
     const y = this.normalizeViewBoxCoordinate(this.newViewBox.y);
     const width = this.normalizeViewBoxSize(this.newViewBox.width);
     const height = this.normalizeViewBoxSize(this.newViewBox.height);
+    const strokeWidth = 1;
 
     const viewBox = this.inflateViewBox({
       id: this.generateViewBoxId(),
       name: this.createDefaultViewBoxName(),
-      x,
-      y,
-      width,
-      height,
+      x, y, width, height,
       createdAt: new Date().toISOString(),
       patch: {
         rawPath: '',
+        strokeWidth,
+        contourMode: 'center',
         history: [],
         historyCursor: -1,
-        localViewPort: {
-          x: 0,
-          y: 0,
-          width,
-          height
-        }
+        localViewPort: { x: -strokeWidth / 2, y: -strokeWidth / 2, width, height }
       }
     });
 
     this.viewBoxes = [...this.viewBoxes, viewBox];
     this.persistViewBoxes();
-
-    this.newViewBox = {
-      x: x + 24,
-      y: y + 24,
-      width,
-      height
-    };
-
+    this.newViewBox = { x: x + 24, y: y + 24, width, height };
     this.selectViewBox(viewBox.id);
   }
 
-  selectViewBox(id: string): void {
-    this.activateViewBox(id);
-  }
-
+  selectViewBox(id: string): void { this.activateViewBox(id); }
   openViewBoxExportPopup(viewBoxId: string): void {
-    if (!this.activeViewBox || this.activeViewBox.id !== viewBoxId) {
-      return;
-    }
-
-    this.isViewBoxExportCopied = false;
+    if (!this.activeViewBox || this.activeViewBox.id !== viewBoxId) return;
     this.isViewBoxSqlExportCopied = false;
     this.isViewBoxExportPopupOpen = true;
   }
-
-  closeViewBoxExportPopup(): void {
-    this.isViewBoxExportPopupOpen = false;
-    this.isViewBoxExportCopied = false;
-    this.isViewBoxSqlExportCopied = false;
-  }
-
-
-  updateViewBoxExportHallId(value: string): void {
-    this.viewBoxExportHallIdValue = value;
-    this.isViewBoxSqlExportCopied = false;
-  }
-
-  updateAllViewBoxesExportHallId(value: string): void {
-    this.allViewBoxesExportHallIdValue = value;
-    this.isAllViewBoxesExportCopied = false;
-  }
-
-  async copyActiveViewBoxSqlExportText(): Promise<void> {
-    const text = this.activeViewBoxSqlExportText;
-    if (!text) {
-      return;
-    }
-
-    this.isViewBoxSqlExportCopied = await this.copyTextToClipboard(text);
-  }
-
-  openAllViewBoxesExportPopup(): void {
-    if (this.viewBoxes.length === 0) {
-      return;
-    }
-
-    this.isAllViewBoxesExportCopied = false;
-    this.isAllViewBoxesExportPopupOpen = true;
-  }
-
-  closeAllViewBoxesExportPopup(): void {
-    this.isAllViewBoxesExportPopupOpen = false;
-    this.isAllViewBoxesExportCopied = false;
-  }
-
-  async copyAllViewBoxesSqlExportText(): Promise<void> {
-    const text = this.allViewBoxesSqlExportText;
-    if (!text) {
-      return;
-    }
-
-    this.isAllViewBoxesExportCopied = await this.copyTextToClipboard(text);
-  }
+  closeViewBoxExportPopup(): void { this.isViewBoxExportPopupOpen = false; this.isViewBoxSqlExportCopied = false; }
+  updateViewBoxExportHallId(value: string): void { this.viewBoxExportHallIdValue = value; this.isViewBoxSqlExportCopied = false; }
+  updateAllViewBoxesExportHallId(value: string): void { this.allViewBoxesExportHallIdValue = value; this.isAllViewBoxesExportCopied = false; }
+  async copyActiveViewBoxSqlExportText(): Promise<void> { const text = this.activeViewBoxSqlExportText; if (text) this.isViewBoxSqlExportCopied = await this.copyTextToClipboard(text); }
+  openAllViewBoxesExportPopup(): void { if (this.viewBoxes.length !== 0) { this.isAllViewBoxesExportCopied = false; this.isAllViewBoxesExportPopupOpen = true; } }
+  closeAllViewBoxesExportPopup(): void { this.isAllViewBoxesExportPopupOpen = false; this.isAllViewBoxesExportCopied = false; }
+  async copyAllViewBoxesSqlExportText(): Promise<void> { const text = this.allViewBoxesSqlExportText; if (text) this.isAllViewBoxesExportCopied = await this.copyTextToClipboard(text); }
 
   updateViewBoxName(viewBoxId: string, value: string): void {
     const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
-    if (!viewBox) {
-      return;
-    }
-
+    if (!viewBox) return;
     const fallbackName = this.getFallbackViewBoxName(viewBoxId);
     const normalizedName = this.normalizeViewBoxName(value, fallbackName);
-    if (viewBox.name === normalizedName) {
-      return;
-    }
-
+    if (viewBox.name === normalizedName) return;
     viewBox.name = normalizedName;
     this.viewBoxes = [...this.viewBoxes];
     this.persistViewBoxes();
@@ -1094,51 +846,23 @@ export class AppComponent implements AfterViewInit {
 
   startViewBoxDrag(viewBoxId: string, $event: PointerEvent): void {
     const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
-    if (!viewBox) {
-      return;
-    }
-
+    if (!viewBox) return;
     this.activateViewBox(viewBoxId);
     this.canvas?.stopDrag();
-    this.viewBoxDrag = {
-      viewBoxId,
-      pointerId: $event.pointerId,
-      startClientX: $event.clientX,
-      startClientY: $event.clientY,
-      startX: viewBox.x,
-      startY: viewBox.y,
-      moved: false
-    };
-
+    this.viewBoxDrag = { viewBoxId, pointerId: $event.pointerId, startClientX: $event.clientX, startClientY: $event.clientY, startX: viewBox.x, startY: viewBox.y, moved: false };
     $event.preventDefault();
     $event.stopPropagation();
   }
 
-  updateViewBoxValue(
-    viewBoxId: string,
-    field: 'x' | 'y' | 'width' | 'height',
-    value: number
-  ): void {
+  updateViewBoxValue(viewBoxId: string, field: 'x' | 'y' | 'width' | 'height', value: number): void {
     const viewBox = this.viewBoxes.find((item) => item.id === viewBoxId);
-    if (!viewBox || Number.isNaN(value)) {
-      return;
-    }
+    if (!viewBox || Number.isNaN(value)) return;
 
-    const normalizedValue = field === 'width' || field === 'height'
-      ? this.normalizeViewBoxSize(value)
-      : this.normalizeViewBoxCoordinate(value);
-
-    if (viewBox[field] === normalizedValue) {
-      return;
-    }
-
+    const normalizedValue = field === 'width' || field === 'height' ? this.normalizeViewBoxSize(value) : this.normalizeViewBoxCoordinate(value);
+    if (viewBox[field] === normalizedValue) return;
     viewBox[field] = normalizedValue;
 
-    if (field === 'width' || field === 'height') {
-      viewBox.patch.localViewPort.width = viewBox.width;
-      viewBox.patch.localViewPort.height = viewBox.height;
-    }
-
+    if (field === 'width' || field === 'height') this.syncPatchDisplayAndLocalToCurrentSize(viewBox);
     this.viewBoxes = [...this.viewBoxes];
 
     if (this.activeViewBoxId === viewBoxId) {
@@ -1147,7 +871,6 @@ export class AppComponent implements AfterViewInit {
       this.pushHistory();
       return;
     }
-
     this.persistViewBoxes();
   }
 
@@ -1155,15 +878,8 @@ export class AppComponent implements AfterViewInit {
     const isDeletingActive = this.activeViewBoxId === id;
     this.viewBoxes = this.viewBoxes.filter((viewBox) => viewBox.id !== id);
     this.persistViewBoxes();
-
-    if (isDeletingActive) {
-      this.activateViewBox(null);
-      return;
-    }
-
-    if (!this.viewBoxes.some((viewBox) => viewBox.id === this.activeViewBoxId)) {
-      this.activateViewBox(null);
-    }
+    if (isDeletingActive) { this.activateViewBox(null); return; }
+    if (!this.viewBoxes.some((viewBox) => viewBox.id === this.activeViewBoxId)) this.activateViewBox(null);
   }
 
   focusItem(it: SvgItem | null): void {
@@ -1179,29 +895,28 @@ export class AppComponent implements AfterViewInit {
   loadHallFragment(fragment: string, persist = true): void {
     this.hallFragment = fragment;
     this.hallError = '';
-
     const hall = this.extractHall(fragment);
     if (!hall) {
+      this.pendingActiveViewBoxId = this.activeViewBoxId || this.pendingActiveViewBoxId;
       this.hallHtml = null;
       this.hallWidth = 0;
       this.hallHeight = 0;
-      this.hallError = 'div.hall не найден';
-      if (persist) {
-        this.storage.removeHallHtml();
-      }
+      this.hallError = 'Не найден блок зала (.hall)';
+      this.activateViewBox(null);
+      if (persist) this.storage.removeHallHtml();
+      setTimeout(() => {
+        this.canvas?.refreshCanvasSize();
+        this.showEmptyWorkspace();
+      }, 0);
       return;
     }
 
     this.hallHtml = this.domSanitizer.bypassSecurityTrustHtml(this.decorateHallMarkup(hall.markup, hall.width, hall.height));
     this.hallWidth = hall.width;
     this.hallHeight = hall.height;
-
     this.updateViewPort(0, 0, hall.width, hall.height, true);
-
-    if (persist) {
-      this.storage.setHallHtml(fragment);
-    }
-
+    if (persist) this.storage.setHallHtml(fragment);
+    this.restoreViewBoxSelectionAfterHallLoad();
     setTimeout(() => {
       this.canvas?.refreshCanvasSize();
       this.zoomAuto();
@@ -1209,89 +924,94 @@ export class AppComponent implements AfterViewInit {
   }
 
   clearHall(): void {
+    this.pendingActiveViewBoxId = this.activeViewBoxId || this.pendingActiveViewBoxId;
     this.hallFragment = '';
     this.hallHtml = null;
     this.hallWidth = 0;
     this.hallHeight = 0;
     this.hallError = '';
     this.storage.removeHallHtml();
-
+    this.activateViewBox(null);
     setTimeout(() => {
       this.canvas?.refreshCanvasSize();
+      this.showEmptyWorkspace();
     }, 0);
+  }
+
+  private restoreViewBoxSelectionAfterHallLoad(): void {
+    if (this.activeViewBoxId && this.viewBoxes.some((viewBox) => viewBox.id === this.activeViewBoxId)) {
+      this.pendingActiveViewBoxId = null;
+      return;
+    }
+
+    const pendingActiveId = this.pendingActiveViewBoxId;
+    const nextActiveId = pendingActiveId && this.viewBoxes.some((viewBox) => viewBox.id === pendingActiveId)
+      ? pendingActiveId
+      : this.resolveInitialActiveViewBoxId();
+
+    this.pendingActiveViewBoxId = null;
+    if (nextActiveId) this.activateViewBox(nextActiveId);
+  }
+
+  private showEmptyWorkspace(): void {
+    this.fitWorkspaceToViewport(this.emptyWorkspaceSize, this.emptyWorkspaceSize);
+  }
+
+  private fitWorkspaceToViewport(width: number, height: number): void {
+    const normalizedWidth = width > 0 ? width : this.emptyWorkspaceSize;
+    const normalizedHeight = height > 0 ? height : this.emptyWorkspaceSize;
+    let viewPortWidth = normalizedWidth;
+    let viewPortHeight = normalizedHeight;
+
+    if (this.canvasWidth > 0 && this.canvasHeight > 0) {
+      const canvasRatio = this.canvasHeight / this.canvasWidth;
+      const workspaceRatio = normalizedHeight / normalizedWidth;
+      if (canvasRatio < workspaceRatio) {
+        viewPortWidth = normalizedHeight / canvasRatio;
+      } else {
+        viewPortHeight = canvasRatio * normalizedWidth;
+      }
+    }
+
+    this.updateViewPort(0, 0, viewPortWidth, viewPortHeight, true);
   }
 
   private finishViewBoxDrag(pointerId: number): void {
     const dragState = this.viewBoxDrag;
-    if (!dragState || dragState.pointerId !== pointerId) {
-      return;
-    }
-
+    if (!dragState || dragState.pointerId !== pointerId) return;
     const draggedViewBoxId = dragState.viewBoxId;
     const moved = dragState.moved;
     this.viewBoxDrag = null;
-
-    if (!moved) {
-      return;
-    }
-
+    if (!moved) return;
     this.viewBoxes = [...this.viewBoxes];
-    if (this.activeViewBoxId === draggedViewBoxId) {
-      this.pushHistory();
-      return;
-    }
-
+    if (this.activeViewBoxId === draggedViewBoxId) { this.pushHistory(); return; }
     this.persistViewBoxes();
   }
 
   private createDefaultViewBoxName(): string {
-    const existingNames = new Set(
-      this.viewBoxes
-        .map((viewBox) => viewBox.name.trim().toLowerCase())
-        .filter((name) => !!name)
-    );
-
+    const existingNames = new Set(this.viewBoxes.map((viewBox) => viewBox.name.trim().toLowerCase()).filter((name) => !!name));
     let index = 1;
-    while (existingNames.has(`viewbox ${index}`.toLowerCase())) {
-      index++;
-    }
-
-    return `ViewBox ${index}`;
+    while (existingNames.has(`контейнер ${index}`.toLowerCase())) index++;
+    return `Контейнер ${index}`;
   }
-
-  private getFallbackViewBoxName(viewBoxId: string): string {
-    const index = this.viewBoxes.findIndex((viewBox) => viewBox.id === viewBoxId);
-    return `ViewBox ${index >= 0 ? index + 1 : 1}`;
-  }
-
-  private normalizeViewBoxName(value: string | null | undefined, fallbackName: string): string {
-    const trimmed = typeof value === 'string' ? value.trim() : '';
-    return trimmed || fallbackName;
-  }
+  private getFallbackViewBoxName(viewBoxId: string): string { const index = this.viewBoxes.findIndex((viewBox) => viewBox.id === viewBoxId); return `Контейнер ${index >= 0 ? index + 1 : 1}`; }
+  private normalizeViewBoxName(value: string | null | undefined, fallbackName: string): string { const trimmed = typeof value === 'string' ? value.trim() : ''; return trimmed || fallbackName; }
 
   private applyBranding(): void {
-    this.document.title = 'Редактор patch/viewBox';
+    this.document.title = 'Редактор patch';
     this.updateBrandLink('icon', './assets/favicon-32x32.png');
     this.updateBrandLink('shortcut icon', './assets/favicon-32x32.png');
     this.updateBrandLink('apple-touch-icon', './assets/apple-touch-icon.png');
   }
-
   private updateBrandLink(rel: string, href: string): void {
     let link = this.document.head.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
-    if (!link) {
-      link = this.document.createElement('link');
-      link.rel = rel;
-      this.document.head.appendChild(link);
-    }
-
+    if (!link) { link = this.document.createElement('link'); link.rel = rel; this.document.head.appendChild(link); }
     link.href = href;
   }
 
   private resolveInitialActiveViewBoxId(): string | null {
     const storedActiveViewBoxId = this.storage.getActiveViewBoxId();
-    if (storedActiveViewBoxId && this.viewBoxes.some((viewBox) => viewBox.id === storedActiveViewBoxId)) {
-      return storedActiveViewBoxId;
-    }
+    if (storedActiveViewBoxId && this.viewBoxes.some((viewBox) => viewBox.id === storedActiveViewBoxId)) return storedActiveViewBoxId;
     return null;
   }
 
@@ -1304,22 +1024,15 @@ export class AppComponent implements AfterViewInit {
     if (nextActiveId) {
       this.storage.setActiveViewBoxId(nextActiveId);
       const activeViewBox = this.viewBoxes.find((viewBox) => viewBox.id === nextActiveId);
-      if (activeViewBox) {
-        this.syncEditorFromViewBox(activeViewBox);
-      }
+      if (activeViewBox) this.syncEditorFromViewBox(activeViewBox);
       return;
     }
-
     this.storage.removeActiveViewBoxId();
     this.resetEditorState();
   }
 
   private syncEditorFromViewBox(viewBox: ViewBoxEntity): void {
-    this.focusedItem = null;
-    this.hoveredItem = null;
-    this.draggedPoint = null;
-    this.invalidSyntax = false;
-
+    this.focusedItem = null; this.hoveredItem = null; this.draggedPoint = null; this.invalidSyntax = false;
     this.parsedPath = viewBox.patch.parsedPath;
     this.targetPoints = viewBox.patch.targetPoints;
     this.controlPoints = viewBox.patch.controlPoints;
@@ -1329,53 +1042,29 @@ export class AppComponent implements AfterViewInit {
   }
 
   private resetEditorState(): void {
-    this.focusedItem = null;
-    this.hoveredItem = null;
-    this.draggedPoint = null;
-    this.invalidSyntax = false;
-
-    this.parsedPath = new SvgPath('');
-    this.targetPoints = [];
-    this.controlPoints = [];
-    this._rawPath = '';
-    this.history = [];
-    this.historyCursor = -1;
+    this.focusedItem = null; this.hoveredItem = null; this.draggedPoint = null; this.invalidSyntax = false;
+    this.parsedPath = new SvgPath(''); this.targetPoints = []; this.controlPoints = []; this._rawPath = ''; this.history = []; this.historyCursor = -1;
   }
 
-  private getActivePatchContext(): ViewBoxPatchContext | null {
-    return this.activeViewBox?.patch || null;
-  }
+  private getActivePatchContext(): ViewBoxPatchContext | null { return this.activeViewBox?.patch || null; }
 
   private getParsedPathBoundingBox(): DOMRect | null {
-    if (this.parsedPath.path.length === 0) {
-      return null;
-    }
-
-    try {
-      return browserComputePathBoundingBox(this.parsedPath.asString(6, this.cfg.minifyOutput));
-    } catch {
-      return null;
-    }
+    if (this.parsedPath.path.length === 0) return null;
+    try { return browserComputePathBoundingBox(this.parsedPath.asString(6, this.cfg.minifyOutput)); } catch { return null; }
   }
+  private normalizeViewBoxCoordinate(value: number): number { return Number.isFinite(value) ? Math.round(value) : 0; }
+  private normalizeViewBoxSize(value: number): number { return Number.isFinite(value) && value > 0 ? Math.max(1, Math.ceil(value)) : 1; }
+  private normalizePatchStrokeWidth(value: number): number { return Number.isFinite(value) && value > 0 ? Math.max(0.1, Number(value.toFixed(4))) : 1; }
 
-  private normalizeViewBoxCoordinate(value: number): number {
-    return Number.isFinite(value) ? Math.round(value) : 0;
-  }
-
-  private normalizeViewBoxSize(value: number): number {
-    return Number.isFinite(value) && value > 0 ? Math.max(1, Math.ceil(value)) : 1;
-  }
-
-  private createCurrentHistoryEntry(): ViewBoxHistoryEntry {
-    return this.createHistoryEntry(this.rawPath, this.activeViewBox);
-  }
-
+  private createCurrentHistoryEntry(): ViewBoxHistoryEntry { return this.createHistoryEntry(this.rawPath, this.activeViewBox); }
   private createHistoryEntry(
     rawPath: string,
-    viewBox: Pick<ViewBoxEntity, 'x' | 'y' | 'width' | 'height'> | null | undefined
+    viewBox: ({ x: number; y: number; width: number; height: number; patch?: Partial<Pick<ViewBoxPatchContext, 'strokeWidth' | 'contourMode'>> } | null | undefined)
   ): ViewBoxHistoryEntry {
     return {
       rawPath,
+      strokeWidth: this.normalizePatchStrokeWidth(viewBox?.patch?.strokeWidth ?? 1),
+      contourMode: normalizePatchContourMode(viewBox?.patch?.contourMode),
       viewBox: {
         x: this.normalizeViewBoxCoordinate(viewBox?.x ?? 0),
         y: this.normalizeViewBoxCoordinate(viewBox?.y ?? 0),
@@ -1386,34 +1075,25 @@ export class AppComponent implements AfterViewInit {
   }
 
   private applyHistoryEntry(entry: ViewBoxHistoryEntry | undefined): void {
-    if (!entry) {
-      return;
-    }
-
+    if (!entry) return;
     const activeViewBox = this.activeViewBox;
     if (activeViewBox) {
       activeViewBox.x = this.normalizeViewBoxCoordinate(entry.viewBox.x);
       activeViewBox.y = this.normalizeViewBoxCoordinate(entry.viewBox.y);
       activeViewBox.width = this.normalizeViewBoxSize(entry.viewBox.width);
       activeViewBox.height = this.normalizeViewBoxSize(entry.viewBox.height);
-      activeViewBox.patch.localViewPort = {
-        x: 0,
-        y: 0,
-        width: activeViewBox.width,
-        height: activeViewBox.height
-      };
+      activeViewBox.patch.strokeWidth = this.normalizePatchStrokeWidth(entry.strokeWidth);
+      activeViewBox.patch.contourMode = normalizePatchContourMode(entry.contourMode);
       this.viewBoxes = [...this.viewBoxes];
     }
-
-    this.reloadPath(entry.rawPath);
+    this.reloadPath(entry.rawPath, false, true);
   }
 
   private areHistoryEntriesEqual(a: ViewBoxHistoryEntry | undefined, b: ViewBoxHistoryEntry): boolean {
-    if (!a) {
-      return false;
-    }
-
+    if (!a) return false;
     return a.rawPath === b.rawPath
+      && a.strokeWidth === b.strokeWidth
+      && a.contourMode === b.contourMode
       && a.viewBox.x === b.viewBox.x
       && a.viewBox.y === b.viewBox.y
       && a.viewBox.width === b.viewBox.width
@@ -1425,59 +1105,37 @@ export class AppComponent implements AfterViewInit {
     if (!activeViewBox) {
       return;
     }
-
     activeViewBox.patch.parsedPath = this.parsedPath;
     activeViewBox.patch.targetPoints = this.targetPoints;
     activeViewBox.patch.controlPoints = this.controlPoints;
     activeViewBox.patch.rawPath = this._rawPath;
     activeViewBox.patch.history = this.history;
     activeViewBox.patch.historyCursor = this.historyCursor;
-    activeViewBox.patch.localViewPort = {
-      x: 0,
-      y: 0,
-      width: activeViewBox.width,
-      height: activeViewBox.height
-    };
-
-    if (persist) {
-      this.persistViewBoxes();
-    }
+    if (persist) this.persistViewBoxes();
   }
-
 
   private normalizeHallIdLiteral(value: string): string {
     const trimmed = value.trim();
-
-    if (!trimmed) {
-      return '#new_hall_id#';
-    }
-
+    if (!trimmed) return '#new_hall_id#';
     return /^\d+$/.test(trimmed) ? trimmed : '#new_hall_id#';
   }
 
   private buildViewBoxesSqlInsert(viewBoxes: ViewBoxEntity[], hallIdValue: string): string {
-    if (viewBoxes.length === 0) {
-      return '';
-    }
-
+    if (viewBoxes.length === 0) return '';
     const hallId = this.normalizeHallIdLiteral(hallIdValue);
     const rows = viewBoxes.map((viewBox) => this.buildViewBoxSqlRow(viewBox, hallId));
-
-    return [
-      'INSERT INTO place_obj (id, hall_id, x, y, width, height, type, param, in_front) VALUES',
-      rows.map((row, index) => `${row}${index < rows.length - 1 ? ',' : ';'}`).join('\n')
-    ].join('\n');
+    return ['INSERT INTO place_obj (id, hall_id, x, y, width, height, type, param, in_front) VALUES', rows.map((row, index) => `${row}${index < rows.length - 1 ? ',' : ';'}`).join('\n')].join('\n');
   }
 
   private buildViewBoxSqlRow(viewBox: ViewBoxEntity, hallId: string): string {
     const param = this.escapeSqlString(this.buildViewBoxParamMarkup(viewBox));
-
     return `(NULL, ${hallId}, ${viewBox.x}+0, ${viewBox.y}+0, ${viewBox.width}, ${viewBox.height}, 0, '${param}', 1)`;
   }
 
   private buildViewBoxParamMarkup(viewBox: ViewBoxEntity): string {
-    const pathD = viewBox.patch.rawPath || '';
-
+    const pathD = viewBox.patch.displayPath || '';
+    const strokeLinejoin = viewBox.patch.strokeLinejoin ? ` stroke-linejoin="${viewBox.patch.strokeLinejoin}"` : '';
+    const strokeLinecap = viewBox.patch.strokeLinecap ? ` stroke-linecap="${viewBox.patch.strokeLinecap}"` : '';
     return [
       '<div style="',
       '    position:absolute;',
@@ -1485,86 +1143,56 @@ export class AppComponent implements AfterViewInit {
       `    height:${viewBox.height}px;`,
       '    box-sizing:border-box;',
       '  " generated_object>',
-      `    <svg viewBox="0 0 ${viewBox.width} ${viewBox.height}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">`,
-      `      <path d="${pathD}" fill="none" stroke="#000" stroke-width="1" />`,
+      `    <svg viewBox="${this.formatPatchViewBox(viewBox)}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">`,
+      `      <path d="${pathD}" fill="none" stroke="#000" stroke-width="${this.formatPatchViewBoxValue(viewBox.patch.strokeWidth)}"${strokeLinejoin}${strokeLinecap} />`,
       '    </svg>',
       '  </div>'
     ].join('\n');
   }
 
-  private escapeSqlString(value: string): string {
-    return value
-      .replace(/\r/g, '')
-      .replace(/'/g, "''");
-  }
+  private escapeSqlString(value: string): string { return value.replace(/\r/g, '').replace(/'/g, "''"); }
 
   private async copyTextToClipboard(text: string): Promise<boolean> {
     let copied = false;
-
     try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        copied = true;
-      }
+      if (navigator?.clipboard?.writeText) { await navigator.clipboard.writeText(text); copied = true; }
     } catch {
       copied = false;
     }
-
     if (!copied) {
       const textarea = this.document.createElement('textarea');
       textarea.value = text;
       textarea.setAttribute('readonly', 'true');
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      textarea.style.pointerEvents = 'none';
-      textarea.style.left = '-9999px';
-      this.document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-
-      try {
-        copied = this.document.execCommand('copy');
-      } catch {
-        copied = false;
-      }
-
+      textarea.style.position = 'fixed'; textarea.style.opacity = '0'; textarea.style.pointerEvents = 'none'; textarea.style.left = '-9999px';
+      this.document.body.appendChild(textarea); textarea.focus(); textarea.select();
+      try { copied = this.document.execCommand('copy'); } catch { copied = false; }
       textarea.remove();
     }
-
     return copied;
   }
 
-  private constrainViewBoxPatch(viewBox: ViewBoxEntity): void {
-    this.constrainPathToBounds(viewBox.patch.parsedPath, viewBox.width, viewBox.height);
-    viewBox.patch.targetPoints = viewBox.patch.parsedPath.targetLocations();
-    viewBox.patch.controlPoints = viewBox.patch.parsedPath.controlLocations();
-    viewBox.patch.rawPath = viewBox.patch.parsedPath.asString(4, this.cfg.minifyOutput);
-  }
+  private getSceneRenderMetrics(): { scale: number; offsetX: number; offsetY: number } {
+    if (this.canvasWidth <= 0 || this.canvasHeight <= 0 || this.cfg.viewPortWidth <= 0 || this.cfg.viewPortHeight <= 0) {
+      return { scale: 1, offsetX: 0, offsetY: 0 };
+    }
 
-  private constrainPathToBounds(parsedPath: SvgPath, width: number, height: number): void {
-    const clamp = (value: number, maxValue: number) => Math.min(maxValue, Math.max(0, value));
-    const clampPoints = (points: Array<SvgPoint | SvgControlPoint>) => {
-      for (const point of points) {
-        if (!point.movable) {
-          continue;
-        }
+    const scale = Math.min(this.canvasWidth / this.cfg.viewPortWidth, this.canvasHeight / this.cfg.viewPortHeight);
+    const offsetX = (this.canvasWidth - (this.cfg.viewPortWidth * scale)) / 2;
+    const offsetY = (this.canvasHeight - (this.cfg.viewPortHeight * scale)) / 2;
 
-        const clampedX = clamp(point.x, width);
-        const clampedY = clamp(point.y, height);
-
-        if (clampedX !== point.x || clampedY !== point.y) {
-          parsedPath.setLocation(point, new Point(clampedX, clampedY));
-        }
-      }
+    return {
+      scale: Number(scale.toFixed(6)),
+      offsetX: Number(offsetX.toFixed(4)),
+      offsetY: Number(offsetY.toFixed(4))
     };
-
-    clampPoints(parsedPath.targetLocations());
-    clampPoints(parsedPath.controlLocations());
   }
 
-  private persistViewBoxes(): void {
-    this.storage.setViewBoxes(this.viewBoxes.map((viewBox) => this.serializeViewBox(viewBox)));
+  private refreshCanvasDerivedMetrics(): void {
+    const { scale } = this.getSceneRenderMetrics();
+    this.strokeWidth = scale > 0 ? Number((1 / scale).toFixed(6)) : 1;
   }
+
+  private persistViewBoxes(): void { this.storage.setViewBoxes(this.viewBoxes.map((viewBox) => this.serializeViewBox(viewBox))); }
 
   private serializeViewBox(viewBox: ViewBoxEntity): StoredViewBox {
     return {
@@ -1577,8 +1205,12 @@ export class AppComponent implements AfterViewInit {
       createdAt: viewBox.createdAt,
       patch: {
         rawPath: viewBox.patch.rawPath,
+        strokeWidth: this.normalizePatchStrokeWidth(viewBox.patch.strokeWidth),
+        contourMode: normalizePatchContourMode(viewBox.patch.contourMode),
         history: viewBox.patch.history.map((entry) => ({
           rawPath: entry.rawPath,
+          strokeWidth: this.normalizePatchStrokeWidth(entry.strokeWidth),
+          contourMode: normalizePatchContourMode(entry.contourMode),
           viewBox: {
             x: this.normalizeViewBoxCoordinate(entry.viewBox.x),
             y: this.normalizeViewBoxCoordinate(entry.viewBox.y),
@@ -1588,10 +1220,10 @@ export class AppComponent implements AfterViewInit {
         })),
         historyCursor: viewBox.patch.historyCursor,
         localViewPort: {
-          x: 0,
-          y: 0,
-          width: viewBox.width,
-          height: viewBox.height
+          x: Number(viewBox.patch.localViewPort.x.toFixed(4)),
+          y: Number(viewBox.patch.localViewPort.y.toFixed(4)),
+          width: this.normalizeViewBoxSize(viewBox.patch.localViewPort.width),
+          height: this.normalizeViewBoxSize(viewBox.patch.localViewPort.height)
         }
       }
     };
@@ -1600,12 +1232,10 @@ export class AppComponent implements AfterViewInit {
   private inflateViewBox(viewBox: StoredViewBox): ViewBoxEntity {
     const width = this.normalizeViewBoxSize(viewBox.width);
     const height = this.normalizeViewBoxSize(viewBox.height);
-
     const id = viewBox.id || this.generateViewBoxId();
-
     return {
       id,
-      name: this.normalizeViewBoxName(viewBox.name, `ViewBox ${this.viewBoxes.length + 1}`),
+      name: this.normalizeViewBoxName(viewBox.name, `Контейнер ${this.viewBoxes.length + 1}`),
       x: this.normalizeViewBoxCoordinate(viewBox.x),
       y: this.normalizeViewBoxCoordinate(viewBox.y),
       width,
@@ -1615,6 +1245,8 @@ export class AppComponent implements AfterViewInit {
         width,
         height,
         viewBox.patch?.rawPath || '',
+        viewBox.patch?.strokeWidth ?? 1,
+        viewBox.patch?.contourMode ?? 'center',
         viewBox.patch?.history || [],
         viewBox.patch?.historyCursor ?? -1
       )
@@ -1625,25 +1257,24 @@ export class AppComponent implements AfterViewInit {
     width: number,
     height: number,
     rawPath = '',
+    strokeWidth = 1,
+    contourMode: PatchContourMode = 'center',
     history: ViewBoxHistoryEntry[] = [],
     historyCursor = -1
   ): ViewBoxPatchContext {
-    let parsedPath = new SvgPath('');
-    let safeRawPath = '';
-
-    try {
-      if (rawPath) {
-        parsedPath = new SvgPath(rawPath);
-        safeRawPath = parsedPath.asString(4, this.cfg.minifyOutput);
-      }
-    } catch {
-      parsedPath = new SvgPath('');
-      safeRawPath = '';
-    }
-
+    const normalizedStrokeWidth = this.normalizePatchStrokeWidth(strokeWidth);
+    const normalizedContourMode = normalizePatchContourMode(contourMode);
+    const normalized = normalizePatchGeometry(rawPath || '', normalizedContourMode, normalizedStrokeWidth, this.cfg.minifyOutput);
+    const requiredWidth = normalized.displayBox ? this.normalizeViewBoxSize(normalized.displayBox.width) : width;
+    const requiredHeight = normalized.displayBox ? this.normalizeViewBoxSize(normalized.displayBox.height) : height;
+    const finalWidth = Math.max(width, requiredWidth);
+    const finalHeight = Math.max(height, requiredHeight);
+    const finalDisplayBox = this.createPatchDisplayBox(normalized.displayBox, finalWidth, finalHeight);
     const normalizedHistory = history.length > 0
       ? history.map((entry) => ({
           rawPath: entry.rawPath,
+          strokeWidth: this.normalizePatchStrokeWidth(entry.strokeWidth),
+          contourMode: normalizePatchContourMode(entry.contourMode),
           viewBox: {
             x: this.normalizeViewBoxCoordinate(entry.viewBox.x),
             y: this.normalizeViewBoxCoordinate(entry.viewBox.y),
@@ -1651,136 +1282,204 @@ export class AppComponent implements AfterViewInit {
             height: this.normalizeViewBoxSize(entry.viewBox.height)
           }
         }))
-      : (safeRawPath ? [this.createHistoryEntry(safeRawPath, { x: 0, y: 0, width, height })] : []);
-    const normalizedCursor = normalizedHistory.length > 0
-      ? Math.min(Math.max(historyCursor, 0), normalizedHistory.length - 1)
-      : -1;
+      : (normalized.rawPath
+          ? [this.createHistoryEntry(normalized.rawPath, { x: 0, y: 0, width: finalWidth, height: finalHeight, patch: { strokeWidth: normalizedStrokeWidth, contourMode: normalizedContourMode } })]
+          : []);
+    const normalizedCursor = normalizedHistory.length > 0 ? Math.min(Math.max(historyCursor, 0), normalizedHistory.length - 1) : -1;
 
     return {
-      rawPath: safeRawPath,
-      parsedPath,
-      targetPoints: parsedPath.targetLocations(),
-      controlPoints: parsedPath.controlLocations(),
+      rawPath: normalized.rawPath,
+      parsedPath: normalized.parsedPath,
+      displayPath: normalized.displayPath,
+      targetPoints: normalized.parsedPath.targetLocations(),
+      controlPoints: normalized.parsedPath.controlLocations(),
+      strokeWidth: normalizedStrokeWidth,
+      contourMode: normalizedContourMode,
+      strokeLinejoin: normalized.strokeLinejoin,
+      strokeLinecap: normalized.strokeLinecap,
+      displayBox: finalDisplayBox,
       history: normalizedHistory,
       historyCursor: normalizedCursor,
-      localViewPort: {
-        x: 0,
-        y: 0,
-        width,
-        height
-      }
+      localViewPort: buildPatchLocalViewPort(finalWidth, finalHeight, finalDisplayBox)
     };
   }
 
-  private generateViewBoxId(): string {
-    return `viewBox-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  private recalculatePatchLayout(viewBox: ViewBoxEntity, options: {
+    allowShrink: boolean;
+    normalizePath: boolean;
+    persist: boolean;
+    syncEditor: boolean;
+    localViewPortMode: 'none' | 'offsets' | 'full' | 'exact';
+  }): void {
+    const sourceRawPath = options.normalizePath ? this.parsedPath.asString(6, this.cfg.minifyOutput) : viewBox.patch.rawPath;
+    let normalized = normalizePatchGeometry(sourceRawPath || '', viewBox.patch.contourMode, viewBox.patch.strokeWidth, this.cfg.minifyOutput);
+    const patchStrokeWidth = this.normalizePatchStrokeWidth(viewBox.patch.strokeWidth);
+
+    if (options.localViewPortMode === 'full') {
+      normalized = this.translatePatchGeometryForFit(normalized, viewBox.patch.contourMode, patchStrokeWidth);
+    }
+
+    const nextLayout = this.resolvePatchDisplayLayout(viewBox, normalized.displayBox, options.localViewPortMode, options.allowShrink);
+
+    viewBox.width = nextLayout.width;
+    viewBox.height = nextLayout.height;
+    viewBox.patch.strokeWidth = patchStrokeWidth;
+    viewBox.patch.parsedPath = normalized.parsedPath;
+    viewBox.patch.targetPoints = normalized.parsedPath.targetLocations();
+    viewBox.patch.controlPoints = normalized.parsedPath.controlLocations();
+    viewBox.patch.rawPath = normalized.rawPath;
+    viewBox.patch.displayPath = normalized.displayPath;
+    viewBox.patch.strokeLinejoin = normalized.strokeLinejoin;
+    viewBox.patch.strokeLinecap = normalized.strokeLinecap;
+    viewBox.patch.displayBox = this.createPatchDisplayBox(normalized.displayBox, nextLayout.width, nextLayout.height, nextLayout.offsetX, nextLayout.offsetY);
+    this.syncPatchLocalViewPortToDisplayBox(viewBox);
+
+    if (options.syncEditor) this.syncEditorFromViewBox(viewBox);
+    if (options.persist) this.persistViewBoxes();
   }
+
+  private resolvePatchDisplayLayout(
+    viewBox: ViewBoxEntity,
+    nextDisplayBox: PatchDisplayBox | null,
+    mode: 'none' | 'offsets' | 'full' | 'exact',
+    allowShrink: boolean
+  ): { width: number; height: number; offsetX: number; offsetY: number } {
+    const currentDisplayBox = viewBox.patch.displayBox ?? viewBox.patch.localViewPort;
+    const currentOffsetX = currentDisplayBox?.x ?? 0;
+    const currentOffsetY = currentDisplayBox?.y ?? 0;
+    const nextOffsetX = mode === 'offsets' || mode === 'full' || mode === 'exact' ? (nextDisplayBox?.x ?? currentOffsetX) : currentOffsetX;
+    const nextOffsetY = mode === 'offsets' || mode === 'full' || mode === 'exact' ? (nextDisplayBox?.y ?? currentOffsetY) : currentOffsetY;
+
+    let width = this.normalizeViewBoxSize(viewBox.width);
+    let height = this.normalizeViewBoxSize(viewBox.height);
+
+    if (mode === 'offsets') {
+      width = this.normalizeViewBoxSize(width + (2 * (currentOffsetX - nextOffsetX)));
+      height = this.normalizeViewBoxSize(height + (2 * (currentOffsetY - nextOffsetY)));
+    } else if (mode === 'full') {
+      const requiredWidth = nextDisplayBox ? this.normalizeViewBoxSize(nextDisplayBox.width) : width;
+      const requiredHeight = nextDisplayBox ? this.normalizeViewBoxSize(nextDisplayBox.height) : height;
+      width = allowShrink ? requiredWidth : Math.max(width, requiredWidth);
+      height = allowShrink ? requiredHeight : Math.max(height, requiredHeight);
+    }
+
+    return { width, height, offsetX: nextOffsetX, offsetY: nextOffsetY };
+  }
+
+  private createPatchDisplayBox(
+    displayBox: PatchDisplayBox | null,
+    width: number,
+    height: number,
+    x: number | null = null,
+    y: number | null = null
+  ): PatchDisplayBox | null {
+    const resolvedX = x ?? displayBox?.x ?? 0;
+    const resolvedY = y ?? displayBox?.y ?? 0;
+
+    return {
+      x: Number(resolvedX.toFixed(4)),
+      y: Number(resolvedY.toFixed(4)),
+      width: Number(width.toFixed(4)),
+      height: Number(height.toFixed(4))
+    };
+  }
+
+  private translatePatchGeometryForFit(
+    normalized: NormalizedPatchGeometry,
+    contourMode: PatchContourMode,
+    strokeWidth: number
+  ): NormalizedPatchGeometry {
+    if (!normalized.rawPath || !normalized.displayBBox || !normalized.displayBox) {
+      return normalized;
+    }
+
+    const targetBBoxX = Number((normalized.displayBox.x + (strokeWidth / 2)).toFixed(4));
+    const targetBBoxY = Number((normalized.displayBox.y + (strokeWidth / 2)).toFixed(4));
+    const deltaX = Number((targetBBoxX - normalized.displayBBox.x).toFixed(4));
+    const deltaY = Number((targetBBoxY - normalized.displayBBox.y).toFixed(4));
+
+    if (deltaX === 0 && deltaY === 0) {
+      return normalized;
+    }
+
+    try {
+      const fittedPath = new SvgPath(normalized.rawPath);
+      fittedPath.translate(deltaX, deltaY);
+      return normalizePatchGeometry(
+        fittedPath.asString(4, this.cfg.minifyOutput),
+        contourMode,
+        strokeWidth,
+        this.cfg.minifyOutput
+      );
+    } catch {
+      return normalized;
+    }
+  }
+
+  private syncPatchLocalViewPortToDisplayBox(viewBox: ViewBoxEntity): void {
+    viewBox.patch.localViewPort = buildPatchLocalViewPort(viewBox.width, viewBox.height, viewBox.patch.displayBox);
+  }
+
+  private syncPatchDisplayAndLocalToCurrentSize(viewBox: ViewBoxEntity): void {
+    viewBox.patch.displayBox = this.createPatchDisplayBox(viewBox.patch.displayBox, viewBox.width, viewBox.height);
+    this.syncPatchLocalViewPortToDisplayBox(viewBox);
+  }
+
+  private getPatchContentWidth(viewBox: ViewBoxEntity): number {
+    return Math.max(0, Number((viewBox.width + (2 * viewBox.patch.localViewPort.x)).toFixed(4)));
+  }
+  private getPatchContentHeight(viewBox: ViewBoxEntity): number {
+    return Math.max(0, Number((viewBox.height + (2 * viewBox.patch.localViewPort.y)).toFixed(4)));
+  }
+  private generateViewBoxId(): string { return `viewBox-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; }
 
   private decorateHallMarkup(markup: string, width: number, height: number): string {
     const hallFallbackStyles = `
       <style>${DEFAULT_HALL_CSS}</style>
       <style>
-        .hall {
-          position: relative !important;
-          display: block;
-          overflow: visible;
-          transform-origin: top left;
-          width: ${width}px;
-          height: ${height}px;
-          background: #ffffff;
-        }
-
-        .hall,
-        .hall * {
-          box-sizing: border-box;
-          color: #000000 !important;
-        }
-
-        .hall [generated_object] {
-          display: block;
-        }
-
-        .hall svg {
-          overflow: visible;
-        }
+        .hall { position: relative !important; display: block; overflow: visible; transform-origin: top left; width: ${width}px; height: ${height}px; background: #ffffff; }
+        .hall, .hall * { box-sizing: border-box; color: #000000 !important; }
+        .hall [generated_object] { display: block; }
+        .hall svg { overflow: visible; }
       </style>
     `;
-
     return `${hallFallbackStyles}${markup}`;
   }
 
   private extractHall(fragment: string): ExtractedHall | null {
-    if (!fragment.trim()) {
-      return null;
-    }
-
+    if (!fragment.trim()) return null;
     const parser = new DOMParser();
     const doc = parser.parseFromString(fragment, 'text/html');
-
-    const rootHall = Array.from(doc.body.children).find((node): node is HTMLElement => {
-      return node instanceof HTMLElement && node.classList.contains('hall');
-    });
-
+    const rootHall = Array.from(doc.body.children).find((node): node is HTMLElement => node instanceof HTMLElement && node.classList.contains('hall'));
     const hall = rootHall || doc.body.querySelector('div.hall');
-
-    if (!(hall instanceof HTMLElement)) {
-      return null;
-    }
-
+    if (!(hall instanceof HTMLElement)) return null;
     const width = this.readHallDimension(hall, 'width');
     const height = this.readHallDimension(hall, 'height');
-
-    if (width <= 0 || height <= 0) {
-      return null;
-    }
-
-    const externalAssets = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
-      .filter((node) => !hall.contains(node))
-      .map((node) => node.outerHTML)
-      .join('\n');
-
-    return {
-      markup: `${externalAssets}${hall.outerHTML}`,
-      width,
-      height
-    };
+    if (width <= 0 || height <= 0) return null;
+    const externalAssets = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]')).filter((node) => !hall.contains(node)).map((node) => node.outerHTML).join('\n');
+    return { markup: `${externalAssets}${hall.outerHTML}`, width, height };
   }
 
   private readHallDimension(hall: HTMLElement, dimension: 'width' | 'height'): number {
     const directStyleValue = hall.style[dimension];
     const directParsed = this.parsePixelValue(directStyleValue);
-    if (directParsed > 0) {
-      return directParsed;
-    }
-
+    if (directParsed > 0) return directParsed;
     const styleAttr = hall.getAttribute('style') || '';
     const regex = new RegExp(`${dimension}\\s*:\\s*([\\d.]+)px`, 'i');
     const matched = styleAttr.match(regex);
-    if (matched) {
-      return parseFloat(matched[1]);
-    }
-
+    if (matched) return parseFloat(matched[1]);
     const attrValue = hall.getAttribute(dimension);
     if (attrValue) {
       const attrParsed = this.parsePixelValue(attrValue);
-      if (attrParsed > 0) {
-        return attrParsed;
-      }
+      if (attrParsed > 0) return attrParsed;
     }
-
     return 0;
   }
 
   private parsePixelValue(value: string | null | undefined): number {
-    if (!value) {
-      return 0;
-    }
-
+    if (!value) return 0;
     const normalized = value.trim().toLowerCase();
-    if (normalized.endsWith('px')) {
-      return parseFloat(normalized.slice(0, -2));
-    }
-
+    if (normalized.endsWith('px')) return parseFloat(normalized.slice(0, -2));
     const numeric = parseFloat(normalized);
     return Number.isFinite(numeric) ? numeric : 0;
   }

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { normalizePatchContourMode, PatchContourMode } from './patch-render-utils';
 import { STORAGE } from './constants/storage.const';
 
 export class StoredPath {
@@ -10,6 +11,8 @@ export class StoredPath {
 
 export type StoredViewBoxHistoryEntry = {
   rawPath: string;
+  strokeWidth: number;
+  contourMode: PatchContourMode;
   viewBox: {
     x: number;
     y: number;
@@ -20,6 +23,8 @@ export type StoredViewBoxHistoryEntry = {
 
 export type StoredViewBoxPatch = {
   rawPath: string;
+  strokeWidth: number;
+  contourMode: PatchContourMode;
   history: StoredViewBoxHistoryEntry[];
   historyCursor: number;
   localViewPort: {
@@ -164,13 +169,15 @@ function normalizeStoredViewBox(viewBox: StoredViewBoxInput | null | undefined, 
 
   const x = normalizeNumber(viewBox.x);
   const y = normalizeNumber(viewBox.y);
-  const width = normalizePositiveNumber(viewBox.width, 1);
-  const height = normalizePositiveNumber(viewBox.height, 1);
+  const width = normalizePositiveInteger(viewBox.width, 1);
+  const height = normalizePositiveInteger(viewBox.height, 1);
   const patch = viewBox.patch || {};
+  const strokeWidth = normalizePositiveFloat(patch.strokeWidth, 1);
+  const contourMode = normalizePatchContourMode(patch.contourMode);
 
   return {
     id: typeof viewBox.id === 'string' && viewBox.id.trim() ? viewBox.id : `viewBox-${index + 1}`,
-    name: typeof viewBox.name === 'string' && viewBox.name.trim() ? viewBox.name.trim() : `ViewBox ${index + 1}`,
+    name: typeof viewBox.name === 'string' && viewBox.name.trim() ? viewBox.name.trim() : `Контейнер ${index + 1}`,
     x,
     y,
     width,
@@ -178,13 +185,15 @@ function normalizeStoredViewBox(viewBox: StoredViewBoxInput | null | undefined, 
     createdAt: typeof viewBox.createdAt === 'string' && viewBox.createdAt ? viewBox.createdAt : new Date().toISOString(),
     patch: {
       rawPath: typeof patch.rawPath === 'string' ? patch.rawPath : '',
-      history: normalizeHistoryEntries(patch.history, x, y, width, height),
+      strokeWidth,
+      contourMode,
+      history: normalizeHistoryEntries(patch.history, x, y, width, height, strokeWidth, contourMode),
       historyCursor: normalizeInteger(patch.historyCursor, -1),
       localViewPort: {
-        x: normalizeNumber(patch.localViewPort?.x),
-        y: normalizeNumber(patch.localViewPort?.y),
-        width: normalizePositiveNumber(patch.localViewPort?.width, width),
-        height: normalizePositiveNumber(patch.localViewPort?.height, height)
+        x: normalizeSignedFloat(patch.localViewPort?.x, contourMode === 'center' ? -strokeWidth / 2 : 0),
+        y: normalizeSignedFloat(patch.localViewPort?.y, contourMode === 'center' ? -strokeWidth / 2 : 0),
+        width: normalizePositiveInteger(patch.localViewPort?.width, width),
+        height: normalizePositiveInteger(patch.localViewPort?.height, height)
       }
     }
   };
@@ -195,14 +204,16 @@ function normalizeHistoryEntries(
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
+  strokeWidth: number,
+  contourMode: PatchContourMode
 ): StoredViewBoxHistoryEntry[] {
   if (!Array.isArray(history)) {
     return [];
   }
 
   return history
-    .map((entry) => normalizeHistoryEntry(entry, x, y, width, height))
+    .map((entry) => normalizeHistoryEntry(entry, x, y, width, height, strokeWidth, contourMode))
     .filter((entry): entry is StoredViewBoxHistoryEntry => entry !== null);
 }
 
@@ -211,11 +222,15 @@ function normalizeHistoryEntry(
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
+  strokeWidth: number,
+  contourMode: PatchContourMode
 ): StoredViewBoxHistoryEntry | null {
   if (typeof entry === 'string') {
     return {
       rawPath: entry,
+      strokeWidth,
+      contourMode,
       viewBox: {
         x,
         y,
@@ -231,11 +246,13 @@ function normalizeHistoryEntry(
 
   return {
     rawPath: entry.rawPath,
+    strokeWidth: normalizePositiveFloat(entry.strokeWidth, strokeWidth),
+    contourMode: normalizePatchContourMode(entry.contourMode ?? contourMode),
     viewBox: {
       x: normalizeNumber(entry.viewBox?.x, x),
       y: normalizeNumber(entry.viewBox?.y, y),
-      width: normalizePositiveNumber(entry.viewBox?.width, width),
-      height: normalizePositiveNumber(entry.viewBox?.height, height)
+      width: normalizePositiveInteger(entry.viewBox?.width, width),
+      height: normalizePositiveInteger(entry.viewBox?.height, height)
     }
   };
 }
@@ -244,8 +261,16 @@ function normalizeNumber(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback;
 }
 
-function normalizePositiveNumber(value: unknown, fallback: number): number {
+function normalizePositiveInteger(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.max(1, Math.ceil(value)) : fallback;
+}
+
+function normalizePositiveFloat(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.max(0.1, Number(value.toFixed(4))) : fallback;
+}
+
+function normalizeSignedFloat(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Number(value.toFixed(4)) : fallback;
 }
 
 function normalizeInteger(value: unknown, fallback: number): number {

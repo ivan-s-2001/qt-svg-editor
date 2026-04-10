@@ -1,7 +1,7 @@
 <ng-container *ngIf="strokeWidth" >
     <ng-container *ngIf="!preview">
         <ng-container *ngFor="let im of images">
-            <svg:image [attr.xlink:href]="im.data" [attr.x]="min(im.x1,im.x2)" [attr.y]="min(im.y1,im.y2)" [attr.width]="abs(im.x2-im.x1)" [attr.height]="abs(im.y1-im.y2)" [attr.preserveAspectRatio]="im.preserveAspectRatio ? 'xMidYMid meet':'none'" [style.opacity]="im.opacity" />
+            <svg:image [attr.xlink:href]="im.data" [attr.x]="min(im.x1,im.x2)" [attr.y]="min(im.y1,im.y2)" [attr.width]="abs(im.x2-im.x1)" [attr.height]="abs(im.y2-im.y1)" [attr.preserveAspectRatio]="im.preserveAspectRatio ? 'xMidYMid meet':'none'" [style.opacity]="im.opacity" />
         </ng-container>
     </ng-container>
 
@@ -13,15 +13,15 @@
 
     <svg:g [attr.clip-path]="pathClipUrl || null">
         <svg:g [attr.transform]="pathTransform || null">
-            <svg:path [class.filled]="filled" [attr.d]="parsedPath?.asString()" [attr.stroke-width]="strokeWidth" />
+            <svg:path [class.filled]="filled" [attr.d]="renderedPathD" [attr.stroke-width]="pathStrokeWidth" [attr.stroke-linejoin]="pathStrokeLinejoin" [attr.stroke-linecap]="pathStrokeLinecap" />
 
             <ng-container *ngIf="!editImages">
                 <ng-container *ngFor="let loc of controlPoints; trackBy:trackByIndex">
                     <svg:line *ngFor="let rel of loc.relations; trackBy:trackByIndex" class="control" [attr.x1]="loc.x" [attr.y1]="loc.y" [attr.x2]="rel.x" [attr.y2]="rel.y" [attr.stroke-width]="strokeWidth" />
                 </ng-container>
 
-                <svg:path *ngIf="hoveredItem && !draggedPoint && !preview" [attr.d]="hoveredItem.asStandaloneString()" [attr.stroke-width]="strokeWidth" class="hovered" />
-                <svg:path *ngIf="focusedItem  && !preview" [attr.d]="focusedItem.asStandaloneString()" [attr.stroke-width]="strokeWidth" class="dragged" />
+                <svg:path *ngIf="hoveredItem && !draggedPoint && !preview" [attr.d]="hoveredItem.asStandaloneString()" [attr.stroke-width]="pathStrokeWidth" class="hovered" />
+                <svg:path *ngIf="focusedItem  && !preview" [attr.d]="focusedItem.asStandaloneString()" [attr.stroke-width]="pathStrokeWidth" class="dragged" />
 
                 <ng-container *ngFor="let loc of targetPoints; trackBy:trackByIndex">
                     <svg:circle *ngIf="loc.movable" class="target" [attr.cx]="loc.x" [attr.cy]="loc.y" [attr.r]="3*strokeWidth" (mousedown)="startDrag(loc);$event.stopPropagation()" (touchstart)="startDrag(loc);$event.preventDefault();$event.stopPropagation()" [attr.stroke-width]="12*strokeWidth" (mouseenter)="hoveredItem=loc.itemReference; $event.stopPropagation()" (mouseleave)="hoveredItem=null" [ngClass]="{ hovered:loc.itemReference===hoveredItem && !draggedPoint, dragged:loc.itemReference===focusedItem }" />
@@ -36,7 +36,7 @@
 
     <ng-container *ngIf="editImages && !preview">
         <svg:g *ngFor="let im of images" [class.focused-image]="im===focusedImage">
-            <svg:rect class="image-control move" [attr.x]="min(im.x1,im.x2)" [attr.y]="min(im.y1,im.y2)" [attr.width]="abs(im.x2-im.x1)" [attr.height]="abs(im.y1-im.y2)" (mousedown)="startDragImage($event,im,1+2+4+8);$event.stopPropagation()" (touchstart)="startDragImage($event,im,1+2+4+8);$event.preventDefault();$event.stopPropagation()" />
+            <svg:rect class="image-control move" [attr.x]="min(im.x1,im.x2)" [attr.y]="min(im.y1,im.y2)" [attr.width]="abs(im.x2-im.x1)" [attr.height]="abs(im.y2-im.y1)" (mousedown)="startDragImage($event,im,1+2+4+8);$event.stopPropagation()" (touchstart)="startDragImage($event,im,1+2+4+8);$event.preventDefault();$event.stopPropagation()" />
             <svg:line class="image-control vertical" [attr.x1]="im.x1" [attr.y1]="im.y1" [attr.x2]="im.x1" [attr.y2]="im.y2" [attr.stroke-width]="6*strokeWidth" (mousedown)="startDragImage($event,im,1);$event.stopPropagation()" (touchstart)="startDragImage($event,im,1);$event.preventDefault();$event.stopPropagation()" />
             <svg:line class="image-control horizontal" [attr.x1]="im.x1" [attr.y1]="im.y1" [attr.x2]="im.x2" [attr.y2]="im.y1" [attr.stroke-width]="6*strokeWidth" (mousedown)="startDragImage($event,im,2);$event.stopPropagation()" (touchstart)="startDragImage($event,im,2);$event.preventDefault();$event.stopPropagation()" />
             <svg:line class="image-control horizontal" [attr.x1]="im.x1" [attr.y1]="im.y2" [attr.x2]="im.x2" [attr.y2]="im.y2" [attr.stroke-width]="6*strokeWidth" (mousedown)="startDragImage($event,im,8);$event.stopPropagation()" (touchstart)="startDragImage($event,im,8);$event.preventDefault();$event.stopPropagation()" />

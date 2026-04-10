@@ -1,0 +1,50 @@
+--- a/src/app/app.component.ts
++++ b/src/app/app.component.ts
+@@
+   fitViewBoxToPatch() {
+     const viewBox = this.activeViewBox;
+     if (!viewBox || this.parsedPath.path.length === 0) return;
+     this.recalculatePatchLayout(viewBox, { allowShrink: true, normalizePath: true, persist: true, syncEditor: true, localViewPortMode: 'full' });
+     this.viewBoxes = [...this.viewBoxes];
+     this.pushHistory();
+   }
+@@
+   afterModelChange() {
+     this.reloadPoints();
+     this.rawPath = this.parsedPath.asString(4, this.cfg.minifyOutput);
+     const activeViewBox = this.activeViewBox;
+     if (activeViewBox) {
+-      this.recalculatePatchLayout(activeViewBox, { allowShrink: false, normalizePath: false, persist: false, syncEditor: false, localViewPortMode: 'none' });
++      this.recalculatePatchLayout(activeViewBox, { allowShrink: false, normalizePath: false, persist: false, syncEditor: false, localViewPortMode: 'full' });
+     }
+     this.syncActivePatchFromEditor();
+   }
+@@
+   reloadPath(newPath: string, autozoom = false, updateLocalViewPortOffsets = false): void {
+@@
+       if (activeViewBox) {
+         this.recalculatePatchLayout(activeViewBox, {
+           allowShrink: false,
+           normalizePath: false,
+           persist: false,
+           syncEditor: false,
+-          localViewPortMode: updateLocalViewPortOffsets ? 'offsets' : 'none'
++          localViewPortMode: 'full'
+         });
+       }
+@@
+   private updatePatchLocalViewPortOffsets(viewBox: ViewBoxEntity, displayBox: PatchDisplayBox | null = viewBox.patch.displayBox): void {
+-    viewBox.patch.localViewPort.x = Number((displayBox?.x ?? 0).toFixed(4));
+-    viewBox.patch.localViewPort.y = Number((displayBox?.y ?? 0).toFixed(4));
++    viewBox.patch.localViewPort.x = Number((displayBox?.x ?? 0).toFixed(4));
++    viewBox.patch.localViewPort.y = Number((displayBox?.y ?? 0).toFixed(4));
++    viewBox.patch.localViewPort.width = Number((displayBox?.width ?? viewBox.patch.localViewPort.width ?? viewBox.width).toFixed(4));
++    viewBox.patch.localViewPort.height = Number((displayBox?.height ?? viewBox.patch.localViewPort.height ?? viewBox.height).toFixed(4));
+   }
+
+   private updatePatchLocalViewPortSize(viewBox: ViewBoxEntity): void {
+-    viewBox.patch.localViewPort.width = this.normalizeViewBoxSize(viewBox.width);
+-    viewBox.patch.localViewPort.height = this.normalizeViewBoxSize(viewBox.height);
++    viewBox.patch.localViewPort.width = Number((viewBox.patch.displayBox?.width ?? viewBox.width).toFixed(4));
++    viewBox.patch.localViewPort.height = Number((viewBox.patch.displayBox?.height ?? viewBox.height).toFixed(4));
+   }

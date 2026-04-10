@@ -2,36 +2,37 @@
 
 @include mat.core();
 
-$svg-path-editor-primary: mat.define-palette(mat.$grey-palette, 800);
+$editor-font-family: 'Open Sans', Arial, sans-serif;
+$svg-path-editor-primary: mat.define-palette(mat.$blue-grey-palette, 700);
 
 $svg-path-editor-accent-palette: (
-  50: #f7e5eb,
-  100: #ebbdcb,
-  200: #de91a8,
-  300: #d06585,
-  400: #c6466a,
-  500: #b5284f,
-  600: #ae2448,
-  700: #a51e3f,
-  800: #9d1836,
-  900: #8d0f26,
-  A100: #ffbdd0,
-  A200: #ff8aad,
-  A400: #ff578a,
-  A700: #ff3d78,
+  50: #f3f7fb,
+  100: #dce8f2,
+  200: #c3d7e8,
+  300: #a8c5dd,
+  400: #93b7d4,
+  500: #6f95bb,
+  600: #6488ac,
+  700: #557699,
+  800: #466586,
+  900: #314c6a,
+  A100: #eef5ff,
+  A200: #c6ddff,
+  A400: #95bdff,
+  A700: #6ba3ff,
   contrast: (
-    50: #16202c,
-    100: #16202c,
-    200: #16202c,
-    300: #ffffff,
+    50: #30373f,
+    100: #30373f,
+    200: #30373f,
+    300: #30373f,
     400: #ffffff,
     500: #ffffff,
     600: #ffffff,
     700: #ffffff,
     800: #ffffff,
     900: #ffffff,
-    A100: #16202c,
-    A200: #16202c,
+    A100: #30373f,
+    A200: #30373f,
     A400: #ffffff,
     A700: #ffffff,
   )
@@ -47,10 +48,13 @@ $svg-path-editor-theme: mat.define-light-theme((
     warn: $svg-path-editor-warn
   ),
   typography: mat.define-typography-config(
-    $body-2: mat.define-typography-level($font-size: 12px),
-    $button: mat.define-typography-level($font-size: 14px, $font-weight: 600)
+    $font-family: $editor-font-family,
+    $body-1: mat.define-typography-level($font-family: $editor-font-family, $font-size: 13px, $line-height: 1.5),
+    $body-2: mat.define-typography-level($font-family: $editor-font-family, $font-size: 13px, $font-weight: 600, $line-height: 1.45),
+    $button: mat.define-typography-level($font-family: $editor-font-family, $font-size: 13px, $font-weight: 600),
+    $caption: mat.define-typography-level($font-family: $editor-font-family, $font-size: 12px, $line-height: 1.4)
   ),
-  density: 0
+  density: -1
 ));
 
 @include mat.core-theme($svg-path-editor-theme);

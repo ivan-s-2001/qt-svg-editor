@@ -31,6 +31,7 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
 
   constructor(public canvas: ElementRef) { }
   @Input() parsedPath?: SvgPath;
+  @Input() displayPath = '';
   @Input() targetPoints: SvgPoint[] = [];
   @Input() controlPoints: SvgControlPoint[] = [];
   @Input() hasHallBackground = false;
@@ -39,6 +40,11 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() patchOffsetY = 0;
   @Input() patchWidth = 0;
   @Input() patchHeight = 0;
+  @Input() patchViewPortX = 0;
+  @Input() patchViewPortY = 0;
+  @Input() pathStrokeWidth = 1;
+  @Input() pathStrokeLinejoin: string | null = null;
+  @Input() pathStrokeLinecap: string | null = null;
 
   @HostBinding('class.has-hall-background')
   get hasHallBackgroundClass(): boolean {
@@ -104,8 +110,26 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     return this.pathLocalMode && this.patchWidth > 0 && this.patchHeight > 0;
   }
 
+  get pathBoundsMinX(): number {
+    return this.hasPathBounds ? this.patchViewPortX : 0;
+  }
+
+  get pathBoundsMinY(): number {
+    return this.hasPathBounds ? this.patchViewPortY : 0;
+  }
+
+  get pathBoundsMaxX(): number {
+    return this.hasPathBounds ? this.patchViewPortX + this.patchWidth : 0;
+  }
+
+  get pathBoundsMaxY(): number {
+    return this.hasPathBounds ? this.patchViewPortY + this.patchHeight : 0;
+  }
+
   get pathTransform(): string | null {
-    return this.hasPathBounds ? `translate(${this.patchOffsetX} ${this.patchOffsetY})` : null;
+    return this.hasPathBounds
+      ? `translate(${this.patchOffsetX - this.patchViewPortX} ${this.patchOffsetY - this.patchViewPortY})`
+      : null;
   }
 
   get pathClipId(): string {
@@ -114,6 +138,10 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
 
   get pathClipUrl(): string | null {
     return this.hasPathBounds ? `url(#${this.pathClipId})` : null;
+  }
+
+  get renderedPathD(): string {
+    return this.displayPath || this.parsedPath?.asString() || '';
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -177,10 +205,10 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     if (rect.width === 0 && emitEmptyCanvas) {
       this.emptyCanvas.emit();
     }
+
     this.canvasWidth = rect.width;
     this.canvasHeight = rect.height;
-
-    this.viewPort.emit({ x: this.viewPortX, y: this.viewPortY, w: this.viewPortWidth, h: null, force: true });
+    this.refreshGrid();
   }
 
   refreshGrid() {
@@ -193,18 +221,32 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     }
   }
 
+  private getRenderedViewMetrics(rect: DOMRect): { scale: number; offsetX: number; offsetY: number } {
+    if (rect.width <= 0 || rect.height <= 0 || this.viewPortWidth <= 0 || this.viewPortHeight <= 0) {
+      return { scale: 1, offsetX: 0, offsetY: 0 };
+    }
+
+    const scale = Math.min(rect.width / this.viewPortWidth, rect.height / this.viewPortHeight);
+    const offsetX = (rect.width - (this.viewPortWidth * scale)) / 2;
+    const offsetY = (rect.height - (this.viewPortHeight * scale)) / 2;
+    return { scale, offsetX, offsetY };
+  }
+
   eventToLocation(event: MouseEvent | TouchEvent, idx = 0): {x: number, y: number} {
     const rect = this.canvas.nativeElement.getBoundingClientRect();
     const touch = event instanceof MouseEvent ? event : event.touches[idx];
-    const x = this.viewPortX + (touch.clientX - rect.left) * this.strokeWidth;
-    const y = this.viewPortY + (touch.clientY - rect.top) * this.strokeWidth;
+    const metrics = this.getRenderedViewMetrics(rect);
+    const localX = touch.clientX - rect.left - metrics.offsetX;
+    const localY = touch.clientY - rect.top - metrics.offsetY;
+    const x = this.viewPortX + (localX / metrics.scale);
+    const y = this.viewPortY + (localY / metrics.scale);
     return {x, y};
   }
 
   toPathLocation(point: {x: number, y: number}): {x: number, y: number} {
     return {
-      x: point.x - this.patchOffsetX,
-      y: point.y - this.patchOffsetY
+      x: point.x - this.patchOffsetX + this.patchViewPortX,
+      y: point.y - this.patchOffsetY + this.patchViewPortY
     };
   }
 
@@ -214,8 +256,8 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
     }
 
     return {
-      x: Math.min(this.patchWidth, Math.max(0, point.x)),
-      y: Math.min(this.patchHeight, Math.max(0, point.y))
+      x: Math.min(this.pathBoundsMaxX, Math.max(this.pathBoundsMinX, point.x)),
+      y: Math.min(this.pathBoundsMaxY, Math.max(this.pathBoundsMinY, point.y))
     };
   }
 
@@ -224,7 +266,10 @@ export class CanvasComponent implements OnInit, OnChanges, AfterViewInit {
       return true;
     }
 
-    return point.x >= 0 && point.y >= 0 && point.x <= this.patchWidth && point.y <= this.patchHeight;
+    return point.x >= this.pathBoundsMinX
+      && point.y >= this.pathBoundsMinY
+      && point.x <= this.pathBoundsMaxX
+      && point.y <= this.pathBoundsMaxY;
   }
 
   pinchToZoom(previousEvent: MouseEvent | TouchEvent, event: MouseEvent | TouchEvent) {

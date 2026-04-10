@@ -27,8 +27,7 @@ export class SaveDialogComponent {
 
 @Component({
   selector: 'app-save',
-  templateUrl: './save.component.html',
-  styleUrls: ['./save.component.css']
+  templateUrl: './save.component.html'
 })
 export class SaveComponent {
   @Input() path = '';

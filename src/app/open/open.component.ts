@@ -11,8 +11,7 @@ export class DialogData {
 
 @Component({
   selector: 'app-open-dialog',
-  templateUrl: 'open-dialog.component.html',
-  styleUrls: ['./open-dialog.component.css']
+  templateUrl: 'open-dialog.component.html'
 })
 export class OpenDialogComponent implements AfterViewInit {
   constructor(
@@ -74,8 +73,7 @@ export class OpenDialogComponent implements AfterViewInit {
 
 @Component({
   selector: 'app-open',
-  templateUrl: './open.component.html',
-  styleUrls: ['./open.component.css']
+  templateUrl: './open.component.html'
 })
 export class OpenComponent {
   @Output() openPath = new EventEmitter<{name: string, path: string}>();
