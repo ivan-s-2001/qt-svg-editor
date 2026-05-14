@@ -1,4 +1,7 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const PERSISTENCE_KEY = 'qt-svg-editor-state-v1';
+const PERSISTENCE_VERSION = 1;
+
 
 const QT_COLOR_LIST = {
   'Розовый': 'ffa3a3', 'розовый': 'ffa3a3',
@@ -112,6 +115,8 @@ const state = {
   historyLock: false,
   dragDirty: false,
   previewMode: false,
+  persistenceReady: false,
+  persistenceTimer: null,
 };
 
 function n(value, fallback = 0) {
@@ -210,6 +215,7 @@ function getCameraMetrics(box = state.viewBox) {
 function setViewBox(box = state.viewBox) {
   state.viewBox = normalizeBoxToViewport(box);
   updateCameraTransform();
+  schedulePersistState();
 }
 
 function updateCameraTransform() {
@@ -276,6 +282,7 @@ function pushHistory() {
     state.history.shift();
     state.historyIndex -= 1;
   }
+  schedulePersistState();
 }
 
 function applyHistorySnapshot(snapshot) {
@@ -286,6 +293,7 @@ function applyHistorySnapshot(snapshot) {
   writeInputs();
   render();
   state.historyLock = false;
+  schedulePersistState();
 }
 
 function undo() {
@@ -303,8 +311,92 @@ function redo() {
 function renderAndSaveHistory() {
   render();
   pushHistory();
+  schedulePersistState();
 }
 
+function makePersistedState() {
+  return {
+    version: PERSISTENCE_VERSION,
+    viewBox: { ...state.viewBox },
+    object: { ...state.object },
+    selectedCommandIndex: state.selectedCommandIndex,
+    previewMode: !!state.previewMode,
+    hallSql: els.hallSqlInput ? els.hallSqlInput.value : '',
+    hallStyle: els.hallStyle ? els.hallStyle.value : 'view',
+    sqlMode: els.sqlMode ? els.sqlMode.value : 'insert',
+    insertHallId: els.insertHallId ? els.insertHallId.value : '',
+    snapToPixel: els.snapToPixel ? !!els.snapToPixel.checked : true,
+    operations: {
+      scaleX: els.scaleX ? els.scaleX.value : '1',
+      scaleY: els.scaleY ? els.scaleY.value : '1',
+      translateX: els.translateX ? els.translateX.value : '0',
+      translateY: els.translateY ? els.translateY.value : '0',
+      rotateX: els.rotateX ? els.rotateX.value : '0',
+      rotateY: els.rotateY ? els.rotateY.value : '0',
+      rotateAngle: els.rotateAngle ? els.rotateAngle.value : '0',
+    },
+  };
+}
+
+function schedulePersistState() {
+  if (!state.persistenceReady) return;
+  if (!window.localStorage) return;
+  window.clearTimeout(state.persistenceTimer);
+  state.persistenceTimer = window.setTimeout(persistStateNow, 120);
+}
+
+function persistStateNow() {
+  if (!state.persistenceReady) return;
+  try {
+    window.localStorage.setItem(PERSISTENCE_KEY, JSON.stringify(makePersistedState()));
+  } catch (error) {
+    console.warn('Не удалось сохранить состояние редактора.', error);
+  }
+}
+
+function restoreStateFromStorage() {
+  if (!window.localStorage) return false;
+  let saved = null;
+  try {
+    saved = JSON.parse(window.localStorage.getItem(PERSISTENCE_KEY) || 'null');
+  } catch (error) {
+    console.warn('Не удалось прочитать сохранённое состояние редактора.', error);
+    return false;
+  }
+  if (!saved || saved.version !== PERSISTENCE_VERSION) return false;
+
+  if (saved.object && typeof saved.object === 'object') {
+    state.object = { ...state.object, ...saved.object };
+  }
+  if (saved.viewBox && typeof saved.viewBox === 'object') {
+    const x = n(saved.viewBox.x, state.viewBox.x);
+    const y = n(saved.viewBox.y, state.viewBox.y);
+    const w = n(saved.viewBox.w, state.viewBox.w);
+    const h = n(saved.viewBox.h, state.viewBox.h);
+    if (w > 0 && h > 0) state.viewBox = { x, y, w, h };
+  }
+  if (Number.isInteger(saved.selectedCommandIndex)) {
+    state.selectedCommandIndex = saved.selectedCommandIndex;
+  }
+  state.previewMode = !!saved.previewMode;
+
+  if (els.hallSqlInput && typeof saved.hallSql === 'string') els.hallSqlInput.value = saved.hallSql;
+  if (els.hallStyle && typeof saved.hallStyle === 'string') els.hallStyle.value = saved.hallStyle;
+  if (els.sqlMode && typeof saved.sqlMode === 'string') els.sqlMode.value = saved.sqlMode;
+  if (els.insertHallId && typeof saved.insertHallId === 'string') els.insertHallId.value = saved.insertHallId;
+  if (els.snapToPixel && typeof saved.snapToPixel === 'boolean') els.snapToPixel.checked = saved.snapToPixel;
+
+  const operations = saved.operations || {};
+  if (els.scaleX && operations.scaleX !== undefined) els.scaleX.value = operations.scaleX;
+  if (els.scaleY && operations.scaleY !== undefined) els.scaleY.value = operations.scaleY;
+  if (els.translateX && operations.translateX !== undefined) els.translateX.value = operations.translateX;
+  if (els.translateY && operations.translateY !== undefined) els.translateY.value = operations.translateY;
+  if (els.rotateX && operations.rotateX !== undefined) els.rotateX.value = operations.rotateX;
+  if (els.rotateY && operations.rotateY !== undefined) els.rotateY.value = operations.rotateY;
+  if (els.rotateAngle && operations.rotateAngle !== undefined) els.rotateAngle.value = operations.rotateAngle;
+
+  return true;
+}
 
 function colorToSelectValue(color, allowNone = false, fallback = 'Чёрный') {
   const raw = String(color ?? '').trim();
@@ -669,6 +761,7 @@ function buildUpdateSql(html, geom) {
   y = ${fmt(state.object.y)},
   width = ${fmt(geom.width)},
   height = ${fmt(geom.height)},
+  type = 0,
   param = '${escapeSqlString(html)}'
 WHERE `;
 }
@@ -2092,12 +2185,13 @@ function renderHallObjectHtml(o, style = 'view') {
   return `<div class="${cls}" style="${common}">${o.param}</div>`;
 }
 
-function loadHallSqlFromTextarea() {
+function loadHallSqlFromTextarea({ fit = true } = {}) {
   const sqlText = els.hallSqlInput ? els.hallSqlInput.value.trim() : '';
   if (!sqlText) {
     state.hall = null;
     els.hallStatus.textContent = 'нет зала';
     render();
+    schedulePersistState();
     return;
   }
 
@@ -2112,13 +2206,15 @@ function loadHallSqlFromTextarea() {
     if (state.hall.warnings && state.hall.warnings.length) {
       console.warn(state.hall.warnings.join('\n'));
     }
-    fitToHall();
+    if (fit) fitToHall();
     render();
+    schedulePersistState();
   } catch (error) {
     state.hall = null;
     els.hallStatus.textContent = 'ошибка SQL';
     console.error(error);
     render();
+    schedulePersistState();
   }
 }
 
@@ -2165,19 +2261,21 @@ function zoom(factor, center) {
     h: nextH,
   });
   renderObject();
+  schedulePersistState();
 }
 
 for (const input of [els.objX, els.objY, els.objWidth, els.objHeight, els.strokeColor, els.strokeWidth, els.fillColor, els.pathInput]) {
   input.addEventListener('input', renderAndSaveHistory);
   input.addEventListener('change', renderAndSaveHistory);
 }
-els.hallStyle.addEventListener('change', renderHall);
-if (els.sqlMode) els.sqlMode.addEventListener('change', () => { updateSqlModeUi(); updateSql(); });
-if (els.insertHallId) els.insertHallId.addEventListener('input', updateSql);
+if (els.snapToPixel) els.snapToPixel.addEventListener('change', schedulePersistState);
+els.hallStyle.addEventListener('change', () => { renderHall(); schedulePersistState(); });
+if (els.sqlMode) els.sqlMode.addEventListener('change', () => { updateSqlModeUi(); updateSql(); schedulePersistState(); });
+if (els.insertHallId) els.insertHallId.addEventListener('input', () => { updateSql(); schedulePersistState(); });
 
 document.getElementById('fitHall').addEventListener('click', fitToHall);
-document.getElementById('renderHallSql').addEventListener('click', loadHallSqlFromTextarea);
-document.getElementById('clearHallSql').addEventListener('click', () => { if (els.hallSqlInput) els.hallSqlInput.value = ''; state.hall = null; els.hallStatus.textContent = 'нет зала'; render(); });
+document.getElementById('renderHallSql').addEventListener('click', () => loadHallSqlFromTextarea({ fit: true }));
+document.getElementById('clearHallSql').addEventListener('click', () => { if (els.hallSqlInput) els.hallSqlInput.value = ''; state.hall = null; els.hallStatus.textContent = 'нет зала'; render(); schedulePersistState(); });
 document.getElementById('fitObjectToPath').addEventListener('click', fitObjectToPath);
 if (els.applyScale) els.applyScale.addEventListener('click', applyScale);
 if (els.applyTranslate) els.applyTranslate.addEventListener('click', applyTranslate);
@@ -2195,7 +2293,7 @@ document.getElementById('copyPhp').addEventListener('click', () => copyText(els.
 document.getElementById('zoomIn').addEventListener('click', () => zoom(0.85));
 document.getElementById('zoomOut').addEventListener('click', () => zoom(1.15));
 document.getElementById('zoomFit').addEventListener('click', fitToHall);
-if (els.previewToggle) els.previewToggle.addEventListener('click', () => { state.previewMode = !state.previewMode; renderObject(); });
+if (els.previewToggle) els.previewToggle.addEventListener('click', () => { state.previewMode = !state.previewMode; renderObject(); schedulePersistState(); });
 
 els.svg.addEventListener('mousedown', event => {
   if (event.button !== 0 || state.drag) return;
@@ -2234,7 +2332,10 @@ window.addEventListener('mouseup', () => {
   state.dragDirty = false;
   state.pan = null;
   els.svg.classList.remove('dragging');
-  if (shouldSave) pushHistory();
+  if (shouldSave) {
+    pushHistory();
+    schedulePersistState();
+  }
 });
 
 els.svg.addEventListener('wheel', event => {
@@ -2294,8 +2395,14 @@ if (window.ResizeObserver && els.canvasWrap) {
 }
 
 populateCommandTypeSelects();
+restoreStateFromStorage();
 writeInputs();
 updateSqlModeUi();
-setViewBox();
+if (els.hallSqlInput && els.hallSqlInput.value.trim()) {
+  loadHallSqlFromTextarea({ fit: false });
+}
+setViewBox(state.viewBox);
 render();
 pushHistory();
+state.persistenceReady = true;
+persistStateNow();
