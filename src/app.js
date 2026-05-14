@@ -59,6 +59,9 @@ const els = {
   scaleX: document.getElementById('scaleX'),
   scaleY: document.getElementById('scaleY'),
   applyScale: document.getElementById('applyScale'),
+  translateX: document.getElementById('translateX'),
+  translateY: document.getElementById('translateY'),
+  applyTranslate: document.getElementById('applyTranslate'),
   rotateX: document.getElementById('rotateX'),
   rotateY: document.getElementById('rotateY'),
   rotateAngle: document.getElementById('rotateAngle'),
@@ -666,6 +669,7 @@ function buildUpdateSql(html, geom) {
   y = ${fmt(state.object.y)},
   width = ${fmt(geom.width)},
   height = ${fmt(geom.height)},
+  type = 0,
   param = '${escapeSqlString(html)}'
 WHERE `;
 }
@@ -1355,6 +1359,14 @@ function applyScale() {
   transformPath(point => ({ x: point.x * sx, y: point.y * sy }), { scaleX: sx, scaleY: sy });
   if (els.scaleX) els.scaleX.value = '1';
   if (els.scaleY) els.scaleY.value = '1';
+}
+
+function applyTranslate() {
+  const dx = n(els.translateX?.value, 0);
+  const dy = n(els.translateY?.value, 0);
+  transformPath(point => ({ x: point.x + dx, y: point.y + dy }));
+  if (els.translateX) els.translateX.value = '0';
+  if (els.translateY) els.translateY.value = '0';
 }
 
 function applyRotate() {
@@ -2169,6 +2181,7 @@ document.getElementById('renderHallSql').addEventListener('click', loadHallSqlFr
 document.getElementById('clearHallSql').addEventListener('click', () => { if (els.hallSqlInput) els.hallSqlInput.value = ''; state.hall = null; els.hallStatus.textContent = 'нет зала'; render(); });
 document.getElementById('fitObjectToPath').addEventListener('click', fitObjectToPath);
 if (els.applyScale) els.applyScale.addEventListener('click', applyScale);
+if (els.applyTranslate) els.applyTranslate.addEventListener('click', applyTranslate);
 if (els.applyRotate) els.applyRotate.addEventListener('click', applyRotate);
 if (els.openObjectImportModal) els.openObjectImportModal.addEventListener('click', openObjectImportModal);
 if (els.closeObjectImportModal) els.closeObjectImportModal.addEventListener('click', closeObjectImportModal);

@@ -877,7 +877,8 @@ a:hover { color: var(--qt-link-dark); }
 }
 .path-operation-row:last-child { margin-bottom: 0; }
 .path-operation-row .field { margin-bottom: 0; }
-.path-operation-row--scale { grid-template-columns: 1fr 1fr auto; }
+.path-operation-row--scale,
+.path-operation-row--translate { grid-template-columns: 1fr 1fr auto; }
 .path-operation-row--rotate { grid-template-columns: 1fr 1fr 1fr auto; }
 .command-index {
   font-weight: 700;
@@ -888,10 +889,12 @@ a:hover { color: var(--qt-link-dark); }
 }
 @media (max-width: 760px) {
   .path-operation-row--scale,
+  .path-operation-row--translate,
   .path-operation-row--rotate {
     grid-template-columns: 1fr 1fr;
   }
   .path-operation-row--scale button,
+  .path-operation-row--translate button,
   .path-operation-row--rotate button {
     grid-column: 1 / -1;
   }
