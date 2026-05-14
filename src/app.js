@@ -2243,21 +2243,45 @@ els.svg.addEventListener('wheel', event => {
   zoom(Math.pow(1.0015, event.deltaY), screenToSvg(event));
 }, { passive: false });
 
-window.addEventListener('keydown', (event) => {
-  const key = event.key.toLowerCase();
-  if ((event.ctrlKey || event.metaKey) && key === 'z') {
+function isUndoShortcut(event) {
+  const key = String(event.key || '').toLowerCase();
+  // event.code stays KeyZ/KeyY even when the keyboard layout is Russian,
+  // where event.key may be "я"/"н". Use both so Ctrl+Z works in textareas
+  // and with non-latin layouts.
+  return (event.ctrlKey || event.metaKey) && !event.altKey && (key === 'z' || key === 'я' || event.code === 'KeyZ');
+}
+
+function isRedoShortcut(event) {
+  const key = String(event.key || '').toLowerCase();
+  return (event.ctrlKey || event.metaKey) && !event.altKey && (
+    ((key === 'z' || key === 'я' || event.code === 'KeyZ') && event.shiftKey) ||
+    key === 'y' ||
+    key === 'н' ||
+    event.code === 'KeyY'
+  );
+}
+
+function handleGlobalKeyDown(event) {
+  if (isRedoShortcut(event)) {
     event.preventDefault();
-    if (event.shiftKey) redo();
-    else undo();
-    return;
-  }
-  if ((event.ctrlKey || event.metaKey) && key === 'y') {
-    event.preventDefault();
+    event.stopPropagation();
     redo();
     return;
   }
+
+  if (isUndoShortcut(event)) {
+    event.preventDefault();
+    event.stopPropagation();
+    undo();
+    return;
+  }
+
   if (event.key === 'Escape') closeObjectImportModal();
-});
+}
+
+// Capture phase is intentional: focused textarea/input can otherwise run its native
+// undo before the application history gets the shortcut.
+document.addEventListener('keydown', handleGlobalKeyDown, true);
 
 function refreshViewportAfterResize() {
   setViewBox(state.viewBox);
