@@ -669,7 +669,6 @@ function buildUpdateSql(html, geom) {
   y = ${fmt(state.object.y)},
   width = ${fmt(geom.width)},
   height = ${fmt(geom.height)},
-  type = 0,
   param = '${escapeSqlString(html)}'
 WHERE `;
 }
