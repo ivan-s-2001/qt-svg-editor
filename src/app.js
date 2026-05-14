@@ -1967,6 +1967,14 @@ function parseValuesTuples(values) {
 function parseSqlValue(value) {
   const raw = String(value).trim();
   if (/^null$/i.test(raw)) return null;
+
+  // Плейсхолдеры генератора (#new_stool_id_2#, #new_hall_id#, $$$, @hall_id)
+  // нельзя превращать в 0. Для координат вида 30+0 арифметика нужна,
+  // но id стула должен остаться строкой, иначе все места получают первый тип стула.
+  if (/^#new_[a-z0-9_]+#$/i.test(raw) || raw === '$$$' || /^@[a-z_][a-z0-9_]*$/i.test(raw)) {
+    return raw;
+  }
+
   if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"') && raw.endsWith('"'))) {
     return raw.slice(1, -1)
       .replace(/\\'/g, "'")

@@ -6,6 +6,7 @@
   <title>SVG Path Editor — помощник объектов залов</title>
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,700&amp;subset=cyrillic,latin&amp;v=16" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:400,700&amp;subset=cyrillic,latin&amp;v=16" rel="stylesheet" type="text/css">
+  <link href="fontawesome/css/all.min.css?v=16" rel="stylesheet" type="text/css">
   <link rel="stylesheet" href="src/styles.css">
 </head>
 <body>
@@ -25,7 +26,7 @@
           <span>Стиль отображения</span>
           <select id="hallStyle">
             <option value="view">view</option>
-            <option value="view_old">view_old</option>
+            <option value="view_old">view_old / oldview</option>
           </select>
         </label>
         <label class="field field--sql-input">
@@ -39,6 +40,7 @@
         <div class="button-row">
           <button id="fitHall" type="button">Подогнать вид</button>
         </div>
+        <p class="hint">SQL заполняет временную БД напрямую: halls используется для размеров/заливки/рамки зала, place_obj — для объектов, place_stool и place — для мест. PHP, HTML и картинки как входные форматы убраны: для PHP-зала сначала сгенерируй SQL в qt.local и вставь его сюда.</p>
       </section>
 
       <section class="panel">
@@ -91,6 +93,7 @@
           <button id="fitObjectToPath" type="button">Размер по path</button>
         </div>
         <label class="check"><input id="snapToPixel" type="checkbox" checked> привязка точек к шагу 0.5</label>
+        <p class="hint">Цвет заливки и обводки выбирается из списка PlaceGenerator: розовый, жёлтый, фиолетовый, голубой, мятный, зелёный, белый, синий, чёрный, серый1–серый6. Для заливки можно выбрать «без заливки».</p>
       </section>
 
       <section class="panel panel--path">
@@ -120,6 +123,7 @@
         <div class="button-row">
           <button id="openObjectImportModal" type="button">Загрузить объект</button>
         </div>
+        <p class="hint">Операции Масштаб и Поворот работают с текущим path, как в оригинальном SVG Path Editor. Загрузка объекта открывается во всплывающем окне. Можно вставить PHP-команду $g->добавитьФигуру([...]) или HTML generated_object.</p>
       </section>
 
       <section class="panel panel--commands">
@@ -141,6 +145,7 @@
           <button id="deleteCommand" type="button" class="danger-button">Удалить выбранную</button>
         </div>
         <div id="commandsList" class="commands-list"></div>
+        <p class="hint">Панель как в оригинальном SVG Path Editor: можно выбрать команду, менять её значения, добавить новую команду после выбранной или заменить тип выбранной команды. После правки path, SQL и PHP-команда добавления фигуры пересобираются автоматически.</p>
       </section>
 
       <section class="panel panel--sql">
@@ -149,6 +154,7 @@
           <label class="field"><span>Тип SQL</span><select id="sqlMode"><option value="insert">INSERT</option><option value="update">UPDATE</option></select></label>
           <label class="field" id="insertHallIdField"><span>hall_id для INSERT</span><input id="insertHallId" type="text" value="" placeholder="$$$, @hall_id или число; если пусто — $$$"></label>
         </div>
+        <p class="hint">Для INSERT hall_id: <code>$$$</code>, <code>@hall_id</code> или число. Для UPDATE запрос намеренно заканчивается на <code>WHERE</code> — условие дописывается вручную после копирования.</p>
         <textarea id="sqlOutput" readonly spellcheck="false"></textarea>
         <div class="button-row">
           <button id="copySql" type="button">Копировать SQL</button>
