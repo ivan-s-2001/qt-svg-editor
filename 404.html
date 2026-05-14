@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SVG Path Editor — помощник объектов залов</title>
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <header class="brand">
+        <div class="brand__title">SVG Path Editor</div>
+        <div class="brand__subtitle">помощник доп. объектов для залов</div>
+      </header>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2>1. Подложка зала</h2>
+          <span id="hallStatus" class="badge">нет зала</span>
+        </div>
+        <label class="field">
+          <span>Стиль отображения</span>
+          <select id="hallStyle">
+            <option value="view">view</option>
+            <option value="view_old">view_old / oldview</option>
+          </select>
+        </label>
+        <label class="field field--sql-input">
+          <span>SQL зала</span>
+          <textarea id="hallSqlInput" spellcheck="false" placeholder="Вставь сюда SQL зала: INSERT INTO halls / place_stool / place / place_obj ..."></textarea>
+        </label>
+        <div class="button-row">
+          <button id="renderHallSql" type="button">Отрисовать SQL</button>
+          <button id="clearHallSql" type="button">Очистить SQL</button>
+        </div>
+        <label class="field field--inline">
+          <span>Прозрачность подложки</span>
+          <input id="backgroundOpacity" type="range" min="0.05" max="1" step="0.05" value="0.65">
+        </label>
+        <div class="button-row">
+          <button id="fitHall" type="button">Подогнать вид</button>
+          <button id="clearHall" type="button">Очистить фон</button>
+        </div>
+        <p class="hint">SQL заполняет временную БД напрямую: halls используется для размеров/заливки/рамки зала, place_obj — для объектов, place_stool и place — для мест. PHP, HTML и картинки как входные форматы убраны: для PHP-зала сначала сгенерируй SQL в qt.local и вставь его сюда.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head"><h2>2. Объект place_obj</h2></div>
+        <div class="grid-2">
+          <label class="field"><span>x</span><input id="objX" type="number" value="0" step="1"></label>
+          <label class="field"><span>y</span><input id="objY" type="number" value="0" step="1"></label>
+          <label class="field"><span>width</span><input id="objWidth" type="number" value="295" min="1" step="1"></label>
+          <label class="field"><span>height</span><input id="objHeight" type="number" value="445" min="1" step="1"></label>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>цвет обводки</span><select id="strokeColor">
+            <option value="Розовый">розовый</option>
+            <option value="Жёлтый">жёлтый</option>
+            <option value="Фиолетовый">фиолетовый</option>
+            <option value="Голубой">голубой</option>
+            <option value="Мятный">мятный</option>
+            <option value="Зелёный">зелёный</option>
+            <option value="Белый">белый</option>
+            <option value="Синий">синий</option>
+            <option value="Чёрный">чёрный</option>
+            <option value="Серый1">серый1</option>
+            <option value="Серый2">серый2</option>
+            <option value="Серый3">серый3</option>
+            <option value="Серый4">серый4</option>
+            <option value="Серый5">серый5</option>
+            <option value="Серый6">серый6</option>
+          </select></label>
+          <label class="field"><span>stroke-width</span><input id="strokeWidth" type="number" value="2" min="0" step="0.5"></label>
+          <label class="field"><span>цвет заливки</span><select id="fillColor">
+            <option value="none">без заливки</option>
+            <option value="Розовый">розовый</option>
+            <option value="Жёлтый">жёлтый</option>
+            <option value="Фиолетовый">фиолетовый</option>
+            <option value="Голубой">голубой</option>
+            <option value="Мятный">мятный</option>
+            <option value="Зелёный">зелёный</option>
+            <option value="Белый">белый</option>
+            <option value="Синий">синий</option>
+            <option value="Чёрный">чёрный</option>
+            <option value="Серый1">серый1</option>
+            <option value="Серый2">серый2</option>
+            <option value="Серый3">серый3</option>
+            <option value="Серый4">серый4</option>
+            <option value="Серый5">серый5</option>
+            <option value="Серый6">серый6</option>
+          </select></label>
+          <label class="field"><span>in_front</span><select id="inFront"><option value="1">1</option><option value="0">0</option></select></label>
+        </div>
+        <div class="button-row button-row--wrap">
+          <button id="templateRect" type="button">Прямоугольник</button>
+          <button id="templateArc" type="button">Дуга добавитьФигуру</button>
+          <button id="templateRounded" type="button">Скругление</button>
+          <button id="fitObjectToPath" type="button">Размер по path</button>
+        </div>
+        <label class="check"><input id="snapToPixel" type="checkbox" checked> привязка к пикселям</label>
+        <p class="hint">Цвет заливки и обводки выбирается из списка PlaceGenerator: розовый, жёлтый, фиолетовый, голубой, мятный, зелёный, белый, синий, чёрный, серый1–серый6. Для заливки можно выбрать «без заливки».</p>
+      </section>
+
+      <section class="panel panel--path">
+        <div class="panel__head"><h2>3. SVG path</h2><span id="pathStatus" class="badge badge--ok">ok</span></div>
+        <textarea id="pathInput" spellcheck="false">M 0 0 L 295 0 L 295 210 Q 209 275 208 445 H 0 Z</textarea>
+        <div class="button-row">
+          <button id="copyPath" type="button">Копировать path</button>
+          <button id="centerObject" type="button">К объекту 0,0</button>
+        </div>
+      </section>
+
+      <section class="panel panel--commands">
+        <div class="panel__head">
+          <h2>4. Команды path</h2>
+          <span id="selectedCommandStatus" class="badge">не выбрано</span>
+        </div>
+        <div class="command-actions">
+          <label class="field">
+            <span>Добавить после выбранной</span>
+            <select id="insertCommandType"></select>
+          </label>
+          <button id="insertCommandAfter" type="button">Добавить</button>
+          <label class="field">
+            <span>Заменить выбранную на</span>
+            <select id="replaceCommandType"></select>
+          </label>
+          <button id="replaceCommand" type="button">Заменить</button>
+          <button id="deleteCommand" type="button" class="danger-button">Удалить выбранную</button>
+        </div>
+        <div id="commandsList" class="commands-list"></div>
+        <p class="hint">Панель как в оригинальном SVG Path Editor: можно выбрать команду, менять её значения, добавить новую команду после выбранной или заменить тип выбранной команды. После правки path, SQL и PHP-команда добавления фигуры пересобираются автоматически.</p>
+      </section>
+
+      <section class="panel panel--sql">
+        <div class="panel__head"><h2>5. SQL</h2></div>
+        <textarea id="sqlOutput" readonly spellcheck="false"></textarea>
+        <div class="button-row">
+          <button id="copySql" type="button">Копировать SQL</button>
+          <button id="downloadSql" type="button">Скачать .sql</button>
+        </div>
+      </section>
+
+      <section class="panel panel--php">
+        <div class="panel__head"><h2>6. PHP команда</h2></div>
+        <textarea id="phpOutput" readonly spellcheck="false"></textarea>
+        <div class="button-row">
+          <button id="copyPhp" type="button">Копировать PHP</button>
+          <button id="downloadPhp" type="button">Скачать .php</button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <div class="toolbar">
+        <button id="zoomIn" type="button">+</button>
+        <button id="zoomOut" type="button">−</button>
+        <button id="zoomFit" type="button">fit</button>
+        <button id="previewToggle" type="button" class="toolbar-preview-button">Просмотр</button>
+        <span class="toolbar__coords" id="coords">0, 0</span>
+        <span class="toolbar__note">мышь по точкам path — перетаскивание, колесо — зум, фон — панорама</span>
+      </div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <svg id="editorSvg" xmlns="http://www.w3.org/2000/svg" tabindex="0">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect id="gridRect" x="-10000" y="-10000" width="20000" height="20000" fill="url(#grid)"></rect>
+          <g id="hallBackgroundLayer"></g>
+          <g id="hallObjectsLayer"></g>
+          <g id="objectLayer"></g>
+          <g id="hallPlacesLayer"></g>
+          <g id="serviceLayer"></g>
+        </svg>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

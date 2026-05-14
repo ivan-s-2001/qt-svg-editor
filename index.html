@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SVG Path Editor — помощник объектов залов</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,700&amp;subset=cyrillic,latin&amp;v=16" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:400,700&amp;subset=cyrillic,latin&amp;v=16" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <header class="brand">
+        <div class="brand__title">SVG Path Editor</div>
+        <div class="brand__subtitle">помощник доп. объектов для залов</div>
+      </header>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2>1. Подложка зала</h2>
+          <span id="hallStatus" class="badge">нет зала</span>
+        </div>
+        <label class="field">
+          <span>Стиль отображения</span>
+          <select id="hallStyle">
+            <option value="view">view</option>
+            <option value="view_old">view_old</option>
+          </select>
+        </label>
+        <label class="field field--sql-input">
+          <span>SQL зала</span>
+          <textarea id="hallSqlInput" spellcheck="false" placeholder="Вставь сюда SQL зала: INSERT INTO halls / place_stool / place / place_obj ..."></textarea>
+        </label>
+        <div class="button-row">
+          <button id="renderHallSql" type="button">Отрисовать SQL</button>
+          <button id="clearHallSql" type="button">Очистить SQL</button>
+        </div>
+        <div class="button-row">
+          <button id="fitHall" type="button">Подогнать вид</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head"><h2>2. Объект place_obj</h2></div>
+        <div class="grid-2">
+          <label class="field"><span>x</span><input id="objX" type="number" value="0" step="1"></label>
+          <label class="field"><span>y</span><input id="objY" type="number" value="0" step="1"></label>
+          <label class="field"><span>width</span><input id="objWidth" type="number" value="295" min="1" step="1"></label>
+          <label class="field"><span>height</span><input id="objHeight" type="number" value="445" min="1" step="1"></label>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>цвет обводки</span><select id="strokeColor">
+            <option value="Розовый">розовый</option>
+            <option value="Жёлтый">жёлтый</option>
+            <option value="Фиолетовый">фиолетовый</option>
+            <option value="Голубой">голубой</option>
+            <option value="Мятный">мятный</option>
+            <option value="Зелёный">зелёный</option>
+            <option value="Белый">белый</option>
+            <option value="Синий">синий</option>
+            <option value="Чёрный">чёрный</option>
+            <option value="Серый1">серый1</option>
+            <option value="Серый2">серый2</option>
+            <option value="Серый3">серый3</option>
+            <option value="Серый4">серый4</option>
+            <option value="Серый5">серый5</option>
+            <option value="Серый6">серый6</option>
+          </select></label>
+          <label class="field"><span>stroke-width</span><input id="strokeWidth" type="number" value="2" min="0" step="1"></label>
+          <label class="field"><span>цвет заливки</span><select id="fillColor">
+            <option value="none">без заливки</option>
+            <option value="Розовый">розовый</option>
+            <option value="Жёлтый">жёлтый</option>
+            <option value="Фиолетовый">фиолетовый</option>
+            <option value="Голубой">голубой</option>
+            <option value="Мятный">мятный</option>
+            <option value="Зелёный">зелёный</option>
+            <option value="Белый">белый</option>
+            <option value="Синий">синий</option>
+            <option value="Чёрный">чёрный</option>
+            <option value="Серый1">серый1</option>
+            <option value="Серый2">серый2</option>
+            <option value="Серый3">серый3</option>
+            <option value="Серый4">серый4</option>
+            <option value="Серый5">серый5</option>
+            <option value="Серый6">серый6</option>
+          </select></label>
+        </div>
+        <div class="button-row">
+          <button id="fitObjectToPath" type="button">Размер по path</button>
+        </div>
+        <label class="check"><input id="snapToPixel" type="checkbox" checked> привязка точек к шагу 0.5</label>
+      </section>
+
+      <section class="panel panel--path">
+        <div class="panel__head"><h2>3. SVG path</h2><span id="pathStatus" class="badge badge--ok">ok</span></div>
+        <label class="field">
+          <span>Path</span>
+          <textarea id="pathInput" spellcheck="false">M 0 0 L 295 0 L 295 210 Q 209 275 208 445 H 0 Z</textarea>
+        </label>
+        <div class="path-operations">
+          <div class="path-operation-row path-operation-row--scale">
+            <label class="field"><span>Масштаб X</span><input id="scaleX" type="number" value="1" step="0.1"></label>
+            <label class="field"><span>Масштаб Y</span><input id="scaleY" type="number" value="1" step="0.1"></label>
+            <button id="applyScale" type="button">Масштаб</button>
+          </div>
+          <div class="path-operation-row path-operation-row--rotate">
+            <label class="field"><span>Центр X</span><input id="rotateX" type="number" value="0" step="0.5"></label>
+            <label class="field"><span>Центр Y</span><input id="rotateY" type="number" value="0" step="0.5"></label>
+            <label class="field"><span>Угол</span><input id="rotateAngle" type="number" value="0" step="1"></label>
+            <button id="applyRotate" type="button">Поворот</button>
+          </div>
+        </div>
+        <div class="button-row">
+          <button id="openObjectImportModal" type="button">Загрузить объект</button>
+        </div>
+      </section>
+
+      <section class="panel panel--commands">
+        <div class="panel__head">
+          <h2>4. Команды path</h2>
+          <span id="selectedCommandStatus" class="badge">не выбрано</span>
+        </div>
+        <div class="command-actions">
+          <label class="field">
+            <span>Добавить после выбранной</span>
+            <select id="insertCommandType"></select>
+          </label>
+          <button id="insertCommandAfter" type="button">Добавить</button>
+          <label class="field">
+            <span>Заменить выбранную на</span>
+            <select id="replaceCommandType"></select>
+          </label>
+          <button id="replaceCommand" type="button">Заменить</button>
+          <button id="deleteCommand" type="button" class="danger-button">Удалить выбранную</button>
+        </div>
+        <div id="commandsList" class="commands-list"></div>
+      </section>
+
+      <section class="panel panel--sql">
+        <div class="panel__head"><h2>5. SQL</h2></div>
+        <div class="grid-2">
+          <label class="field"><span>Тип SQL</span><select id="sqlMode"><option value="insert">INSERT</option><option value="update">UPDATE</option></select></label>
+          <label class="field" id="insertHallIdField"><span>hall_id для INSERT</span><input id="insertHallId" type="text" value="" placeholder="$$$, @hall_id или число; если пусто — $$$"></label>
+        </div>
+        <textarea id="sqlOutput" readonly spellcheck="false"></textarea>
+        <div class="button-row">
+          <button id="copySql" type="button">Копировать SQL</button>
+        </div>
+      </section>
+
+      <section class="panel panel--php">
+        <div class="panel__head"><h2>6. PHP команда</h2></div>
+        <textarea id="phpOutput" readonly spellcheck="false"></textarea>
+        <div class="button-row">
+          <button id="copyPhp" type="button">Копировать PHP</button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <div class="toolbar">
+        <button id="zoomIn" type="button">+</button>
+        <button id="zoomOut" type="button">−</button>
+        <button id="zoomFit" type="button">fit</button>
+        <button id="previewToggle" type="button" class="toolbar-preview-button">Просмотр</button>
+        <span class="toolbar__coords" id="coords">0, 0</span>
+        <span class="toolbar__note">мышь по точкам path — перетаскивание, колесо — зум, фон — панорама</span>
+      </div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <svg id="editorSvg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" tabindex="0">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <g id="cameraLayer">
+            <rect id="gridRect" x="-10000" y="-10000" width="20000" height="20000" fill="url(#grid)"></rect>
+            <g id="hallBackgroundLayer"></g>
+            <g id="hallObjectsLayer"></g>
+            <g id="objectLayer"></g>
+            <g id="hallPlacesLayer"></g>
+            <g id="serviceLayer"></g>
+          </g>
+        </svg>
+      </div>
+    </main>
+  </div>
+
+  <div id="objectImportModal" class="modal" aria-hidden="true">
+    <div class="modal__backdrop" data-close-object-import></div>
+    <div class="modal__dialog modal__dialog--object" role="dialog" aria-modal="true" aria-labelledby="objectImportTitle">
+      <div class="modal__head">
+        <div>
+          <h2 id="objectImportTitle">Загрузить объект</h2>
+          <div class="modal__subtitle">Импорт готовой фигуры в текущий редактор</div>
+        </div>
+        <button id="closeObjectImportModal" type="button" class="modal__close" aria-label="Закрыть">×</button>
+      </div>
+      <div class="modal__body">
+        <div class="modal-alert">
+          <div class="modal-alert__title">Поддерживаются PHP и любой текст с объектом</div>
+          <div class="modal-alert__grid">
+            <div><span class="modal-chip">PHP</span> <code>$g-&gt;добавитьФигуру([...]);</code></div>
+            <div><span class="modal-chip">HTML</span> <code>&lt;div generated_object&gt;&lt;svg&gt;&lt;path ...&gt;</code></div>
+            <div><span class="modal-chip">любой текст</span> <code>INSERT / UPDATE / комментарий с &lt;div&gt;&lt;svg&gt;&lt;path&gt;</code></div>
+          </div>
+        </div>
+        <label class="field field--object-load">
+          <span>Код объекта</span>
+          <textarea id="objectImportInput" spellcheck="false" placeholder="$g->добавитьФигуру([
+    'x' => 0,
+    'y' => 0,
+    'width' => 489,
+    'height' => 426,
+    'path' => 'M 7 67 L 393 0 Q 691 148 59 426 H 0 Z',
+    'backgroundColor' => 'Серый2',
+    'borderColor' => 'Мятный',
+    'borderSize' => 28,
+]);
+
+или
+
+&lt;div style=&quot;width:489px;height:426px;box-sizing:border-box;&quot; generated_object&gt;...&lt;/div&gt;
+
+или
+
+любой текст, например INSERT/UPDATE/комментарий, внутри которого есть:
+&lt;div generated_object&gt;&lt;svg&gt;&lt;path ...&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/div&gt;"></textarea>
+        </label>
+        <div id="objectImportStatus" class="modal-status" hidden></div>
+        <p class="hint">После загрузки обновятся x/y/width/height, path, заливка, обводка и толщина обводки. Для HTML без координат x/y текущая позиция объекта сохраняется. Если текст является SQL INSERT/UPDATE place_obj, координаты и размеры по возможности берутся из колонок x/y/width/height; иначе используются размеры внешнего div или viewBox.</p>
+      </div>
+      <div class="modal__foot">
+        <button id="cancelObjectImportModal" type="button">Отмена</button>
+        <button id="loadObjectFromText" type="button" class="primary-button">Загрузить объект</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

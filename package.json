@@ -1,0 +1,11 @@
+{
+  "name": "svg-path-editor-hall-helper-pages",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static GitHub Pages helper for drawing SVG path objects for QT halls and generating place_obj SQL.",
+  "scripts": {
+    "start": "python3 -m http.server 5173",
+    "serve": "python3 -m http.server 5173",
+    "check": "node --check src/app.js"
+  }
+}
