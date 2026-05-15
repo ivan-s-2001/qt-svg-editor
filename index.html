@@ -26,7 +26,7 @@
           <span>Стиль отображения</span>
           <select id="hallStyle">
             <option value="view">view</option>
-            <option value="view_old">view_old / oldview</option>
+            <option value="view_old">view_old</option>
           </select>
         </label>
         <label class="field field--sql-input">
@@ -36,9 +36,6 @@
         <div class="button-row">
           <button id="renderHallSql" type="button">Отрисовать SQL</button>
           <button id="clearHallSql" type="button">Очистить SQL</button>
-        </div>
-        <div class="button-row">
-          <button id="fitHall" type="button">Подогнать вид</button>
         </div>
         <p class="hint">SQL заполняет временную БД напрямую: halls используется для размеров/заливки/рамки зала, place_obj — для объектов, place_stool и place — для мест. PHP, HTML и картинки как входные форматы убраны: для PHP-зала сначала сгенерируй SQL в qt.local и вставь его сюда.</p>
       </section>
@@ -123,7 +120,7 @@
         <div class="button-row">
           <button id="openObjectImportModal" type="button">Загрузить объект</button>
         </div>
-        <p class="hint">Операции Масштаб и Поворот работают с текущим path, как в оригинальном SVG Path Editor. Загрузка объекта открывается во всплывающем окне. Можно вставить PHP-команду $g->добавитьФигуру([...]) или HTML generated_object.</p>
+        <p class="hint">Операции Масштаб и Поворот работают с текущим path, как в оригинальном SVG Path Editor. Загрузка объекта открывается во всплывающем окне. Можно вставить PHP-команду $g-&gt;добавитьФигуру([...]) или HTML generated_object.</p>
       </section>
 
       <section class="panel panel--commands">
@@ -174,7 +171,7 @@
       <div class="toolbar">
         <button id="zoomIn" type="button">+</button>
         <button id="zoomOut" type="button">−</button>
-        <button id="zoomFit" type="button">fit</button>
+        <button id="zoomFit" type="button" title="Отрисовать SQL заново и подогнать вид" aria-label="Отрисовать SQL заново и подогнать вид">□</button>
         <button id="previewToggle" type="button" class="toolbar-preview-button">Просмотр</button>
         <span class="toolbar__coords" id="coords">0, 0</span>
         <span class="toolbar__note">мышь по точкам path — перетаскивание, колесо — зум, фон — панорама</span>
@@ -250,6 +247,123 @@
     </div>
   </div>
 
+  <script>
+    (() => {
+      const STORAGE_KEY = 'qt-svg-editor-state-v1';
+      const DEFAULT_PATH = 'M 0 0 L 295 0 L 295 210 Q 209 275 208 445 H 0 Z';
+      const EMPTY_PATH = 'M 0 0';
+      const DRAW_COMMAND_RE = /[LlHhVvCcSsQqTtAaZz]/;
+
+      function isDrawablePath(value) {
+        const d = String(value || '').trim();
+        if (!d || !/[Mm]/.test(d) || !DRAW_COMMAND_RE.test(d)) return false;
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        svg.style.cssText = 'position:absolute;left:-99999px;top:-99999px;width:1px;height:1px;overflow:hidden;';
+        path.setAttribute('d', d);
+        svg.appendChild(path);
+        document.body.appendChild(svg);
+
+        try {
+          const bbox = path.getBBox();
+          const length = path.getTotalLength();
+          return Number.isFinite(length) && (length > 0 || bbox.width > 0 || bbox.height > 0);
+        } catch (error) {
+          return false;
+        } finally {
+          svg.remove();
+        }
+      }
+
+      function isMoveOnlyPath(value) {
+        const d = String(value || '').trim();
+        return /^M\s*[+-]?(?:\d+\.?\d*|\.\d+)(?:[\s,]+)[+-]?(?:\d+\.?\d*|\.\d+)$/i.test(d);
+      }
+
+      function setDraftStatus() {
+        const status = document.getElementById('pathStatus');
+        if (!status) return;
+        status.textContent = 'черновик';
+        status.className = 'badge';
+      }
+
+      function clearRenderedObjectDraft() {
+        const objectLayer = document.getElementById('objectLayer');
+        const serviceLayer = document.getElementById('serviceLayer');
+        const commandsList = document.getElementById('commandsList');
+        const selectedCommandStatus = document.getElementById('selectedCommandStatus');
+
+        if (objectLayer) objectLayer.innerHTML = '';
+        if (serviceLayer) serviceLayer.innerHTML = '';
+        if (commandsList) commandsList.innerHTML = '<div class="commands-empty">Path пока пустой. Напиши команду M и следующий сегмент, например L/Q/C/Z.</div>';
+        if (selectedCommandStatus) selectedCommandStatus.textContent = 'черновик';
+      }
+
+      function sanitizeStoredPath() {
+        let saved;
+        try {
+          saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null');
+        } catch (error) {
+          return;
+        }
+
+        if (!saved || saved.version !== 1 || !saved.object || typeof saved.object !== 'object') return;
+        if (isDrawablePath(saved.object.path) || isMoveOnlyPath(saved.object.path)) return;
+
+        saved.object.path = EMPTY_PATH;
+        saved.selectedCommandIndex = -1;
+
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+        } catch (error) {}
+      }
+
+      function installPathDraftGuard() {
+        const pathInput = document.getElementById('pathInput');
+        if (!pathInput) return;
+
+        pathInput.addEventListener('input', (event) => {
+          if (!pathInput.value.trim()) {
+            pathInput.value = EMPTY_PATH;
+            pathInput.setSelectionRange(pathInput.value.length, pathInput.value.length);
+            return;
+          }
+
+          if (isDrawablePath(pathInput.value) || isMoveOnlyPath(pathInput.value)) return;
+
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          setDraftStatus();
+          clearRenderedObjectDraft();
+        }, true);
+
+        const pathPanel = pathInput.closest('.panel--path');
+        const buttonRow = pathPanel?.querySelector('.button-row');
+
+        if (!buttonRow || document.getElementById('clearPathDraft')) return;
+
+        const clearButton = document.createElement('button');
+        clearButton.id = 'clearPathDraft';
+        clearButton.type = 'button';
+        clearButton.textContent = 'Очистить path';
+        clearButton.title = 'Очистить поле path и начать писать новый с нуля';
+
+        clearButton.addEventListener('click', () => {
+          pathInput.value = EMPTY_PATH;
+          setDraftStatus();
+          clearRenderedObjectDraft();
+          pathInput.focus();
+          pathInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        });
+
+        buttonRow.prepend(clearButton);
+      }
+
+      sanitizeStoredPath();
+      installPathDraftGuard();
+    })();
+  </script>
   <script type="module" src="src/app.js"></script>
 </body>
 </html>

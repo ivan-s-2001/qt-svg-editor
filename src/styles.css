@@ -315,6 +315,29 @@ a:hover { color: var(--qt-link-dark); }
   pointer-events: none;
   vector-effect: non-scaling-stroke;
 }
+.object-guide-foreign-object {
+  pointer-events: none;
+  overflow: visible;
+}
+.object-guide-foreign {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  background: transparent;
+}
+.object-guide-foreign svg {
+  display: block;
+  overflow: visible;
+}
+.object-guide-path-foreign-object {
+  pointer-events: none;
+  overflow: visible;
+}
+.object-guide-path-foreign {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
 .object-path {
   fill: none;
   stroke: var(--qt-link);
@@ -936,4 +959,127 @@ a:hover { color: var(--qt-link-dark); }
 }
 .qt-style-view .hallPlace .place_price {
   display: none !important;
+}
+
+/* Font Awesome inside place_obj should render exactly as icon glyphs, not as
+   inherited Roboto/Roboto Slab text from the hall wrapper. Keep this scoped to
+   hall objects so generated SQL/HTML is not changed. */
+.qt-style-view .hallBlock .fa,
+.qt-style-view .hallBlock .fas,
+.qt-style-view .hallBlock .far,
+.qt-style-view .hallBlock .fab,
+.qt-style-old .hall .o .fa,
+.qt-style-old .hall .o .fas,
+.qt-style-old .hall .o .far,
+.qt-style-old .hall .o .fab,
+.final-object-html .fa,
+.final-object-html .fas,
+.final-object-html .far,
+.final-object-html .fab {
+  font-family: "Font Awesome 5 Free" !important;
+  font-style: normal !important;
+  font-variant: normal !important;
+  text-rendering: auto !important;
+  -webkit-font-smoothing: antialiased;
+}
+.qt-style-view .hallBlock .fas,
+.qt-style-old .hall .o .fas,
+.final-object-html .fas {
+  font-weight: 900 !important;
+}
+.qt-style-view .hallBlock .far,
+.qt-style-old .hall .o .far,
+.final-object-html .far {
+  font-weight: 400 !important;
+}
+.qt-style-view .hallBlock .fab,
+.qt-style-old .hall .o .fab,
+.final-object-html .fab {
+  font-family: "Font Awesome 5 Brands" !important;
+  font-weight: 400 !important;
+}
+
+/* Do not let helper layout rules squeeze generated icon blocks. */
+.qt-style-view .hallBlock [generated_object],
+.qt-style-old .hall .o [generated_object],
+.final-object-html [generated_object] {
+  flex: none;
+  max-width: none;
+  max-height: none;
+}
+
+/* Stable inline replacements for Font Awesome icons inside imported place_obj.
+   They are used only in the helper preview; generated SQL/PHP stays unchanged. */
+.qt-fa-inline-icon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 1em;
+  min-height: 1em;
+  line-height: 1 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-style: normal !important;
+  font-weight: 700 !important;
+  text-align: center;
+  vertical-align: middle;
+  box-sizing: content-box;
+}
+
+/* Wheelchair icons in generated hall objects must keep a square box.
+   Font Awesome wheelchair glyph is narrower than it is tall; when a border is put
+   directly on the <i> tag (as PlaceGenerator examples do), CSS border-radius:50%
+   becomes an oval unless the icon element has equal width and height. */
+.qt-hall-html i.fa-wheelchair,
+.qt-hall-html i.fas.fa-wheelchair,
+.qt-hall-html i.fa.fa-wheelchair,
+.final-object-html i.fa-wheelchair,
+.final-object-html i.fas.fa-wheelchair,
+.final-object-html i.fa.fa-wheelchair {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 1em !important;
+  height: 1em !important;
+  min-width: 1em !important;
+  line-height: 1em !important;
+  text-align: center;
+  vertical-align: middle;
+  box-sizing: content-box;
+}
+
+.qt-hall-html i.fa-wheelchair::before,
+.qt-hall-html i.fas.fa-wheelchair::before,
+.qt-hall-html i.fa.fa-wheelchair::before,
+.final-object-html i.fa-wheelchair::before,
+.final-object-html i.fas.fa-wheelchair::before,
+.final-object-html i.fa.fa-wheelchair::before {
+  display: inline-block;
+  width: 1em;
+  line-height: 1em;
+  text-align: center;
+}
+
+/* Selected SVG path command: native part of editor, not a separate overlay script */
+.command-segment-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  vector-effect: non-scaling-stroke;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.selected-command-segment {
+  fill: none;
+  stroke: #f37334;
+  stroke-width: 3;
+  stroke-dasharray: 8 4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.selected-command-point {
+  fill: #f37334;
+  stroke: #ffffff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }

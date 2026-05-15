@@ -114,6 +114,7 @@ const state = {
   historyIndex: -1,
   historyLock: false,
   dragDirty: false,
+  dragRenderFrame: null,
   previewMode: false,
   persistenceReady: false,
   persistenceTimer: null,
@@ -548,6 +549,126 @@ function fromGeneratedShapePoint(point, geom = getGeneratedShapeGeometry()) {
   };
 }
 
+
+function scheduleObjectRender() {
+  if (state.dragRenderFrame !== null) return;
+  state.dragRenderFrame = window.requestAnimationFrame(() => {
+    state.dragRenderFrame = null;
+    renderObject();
+  });
+}
+
+function scrollSelectedCommandIntoView() {
+  if (!els.commandsList) return;
+  const row = els.commandsList.querySelector(`.command-row[data-index="${state.selectedCommandIndex}"]`);
+  if (!row) return;
+  row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function selectCommandIndex(index, options = {}) {
+  const parsed = parsePath(state.object.path);
+  if (parsed.error || parsed.commands.length === 0) return;
+  const nextIndex = Math.min(Math.max(Number(index) || 0, 0), parsed.commands.length - 1);
+  state.selectedCommandIndex = nextIndex;
+  renderCommandPanel();
+  renderObject();
+  if (options.scroll) scrollSelectedCommandIntoView();
+  schedulePersistState();
+}
+
+function commandSegmentPathData(commands, commandIndex) {
+  if (!commands || !commands[commandIndex]) return null;
+
+  let current = { x: 0, y: 0 };
+  let subStart = { x: 0, y: 0 };
+
+  for (let i = 0; i <= commandIndex; i++) {
+    const command = commands[i];
+    const abs = absoluteCommandAt(command, current, subStart);
+    const upper = abs.type;
+    const a = abs.args;
+    let result = null;
+
+    if (upper === 'M') {
+      result = { d: '', point: { x: a[0], y: a[1] } };
+      current = { x: a[0], y: a[1] };
+      subStart = { ...current };
+    } else if (upper === 'L' || upper === 'T') {
+      result = { d: `M ${fmt(current.x)} ${fmt(current.y)} L ${fmt(a[0])} ${fmt(a[1])}` };
+      current = { x: a[0], y: a[1] };
+    } else if (upper === 'Q' || upper === 'S') {
+      result = { d: `M ${fmt(current.x)} ${fmt(current.y)} ${upper} ${a.map(v => fmt(v)).join(' ')}` };
+      current = { x: a[2], y: a[3] };
+    } else if (upper === 'C') {
+      result = { d: `M ${fmt(current.x)} ${fmt(current.y)} C ${a.map(v => fmt(v)).join(' ')}` };
+      current = { x: a[4], y: a[5] };
+    } else if (upper === 'A') {
+      result = { d: `M ${fmt(current.x)} ${fmt(current.y)} A ${a.map(v => fmt(v)).join(' ')}` };
+      current = { x: a[5], y: a[6] };
+    } else if (upper === 'Z') {
+      result = { d: `M ${fmt(current.x)} ${fmt(current.y)} L ${fmt(subStart.x)} ${fmt(subStart.y)}` };
+      current = { ...subStart };
+    }
+
+    if (i === commandIndex) return result;
+  }
+
+  return null;
+}
+
+function renderCommandSegmentSelection(overlay, commands, geom) {
+  if (!overlay || !commands || !commands.length || state.previewMode) return;
+
+  // Во время перетаскивания не строим невидимые hit-path для всех команд.
+  // Иначе пункт 11 начинает тормозить drag: на каждом mousemove создавались
+  // кликабельные сегменты и обработчики для всего path.
+  const selectedIndex = Math.min(Math.max(state.selectedCommandIndex, 0), commands.length - 1);
+  const renderHitAreas = !state.drag;
+  const indexes = renderHitAreas ? commands.map((_command, index) => index) : [selectedIndex];
+
+  indexes.forEach(index => {
+    const segment = commandSegmentPathData(commands, index);
+    if (!segment || !segment.d) return;
+
+    if (renderHitAreas) {
+      const hit = svgEl('path', {
+        class: 'command-segment-hit',
+        d: segment.d,
+        transform: geom.transform,
+        'data-command-index': index,
+      });
+      hit.addEventListener('mousedown', event => {
+        event.stopPropagation();
+      });
+      hit.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectCommandIndex(index, { scroll: true });
+      });
+      overlay.appendChild(hit);
+    }
+
+    if (index === selectedIndex) {
+      overlay.appendChild(svgEl('path', {
+        class: 'selected-command-segment',
+        d: segment.d,
+        transform: geom.transform,
+      }));
+    }
+  });
+
+  const selectedSegment = commandSegmentPathData(commands, selectedIndex);
+  if (selectedSegment && selectedSegment.point) {
+    const visual = toGeneratedShapePoint(selectedSegment.point, geom);
+    overlay.appendChild(svgEl('circle', {
+      class: 'selected-command-point',
+      cx: visual.x,
+      cy: visual.y,
+      r: 7 * state.viewBox.w / Math.max(els.svg.getBoundingClientRect().width, 1),
+    }));
+  }
+}
+
 function renderObject() {
   els.objectLayer.innerHTML = '';
   if (els.serviceLayer) els.serviceLayer.innerHTML = '';
@@ -582,23 +703,19 @@ function renderObject() {
 
   if (state.previewMode) return;
 
-  const overlay = svgEl('g', { class: 'object-edit-overlay', transform: `translate(${fmt(state.object.x)} ${fmt(state.object.y)})` });
-  overlay.appendChild(svgEl('rect', {
-    class: 'object-guide',
-    x: 0,
-    y: 0,
-    width: state.object.width,
-    height: state.object.height,
-  }));
+  // Служебную рамку и guide-line рисуем через foreignObject, как реальный place_obj.
+  // Рамка — отдельный HTML div без box-sizing:border-box.
+  // Guide-line — отдельный SVG внутри foreignObject с тем же viewBox/path/transform,
+  // что и итоговый объект, только другим цветом и толщиной.
+  if (els.serviceLayer) {
+    els.serviceLayer.insertAdjacentHTML('beforeend', buildObjectGuideBoxForeignObjectMarkup(state.object.x, state.object.y, geom));
+    els.serviceLayer.insertAdjacentHTML('beforeend', buildObjectGuidePathForeignObjectMarkup(state.object.x, state.object.y, geom, state.object.path));
+  }
 
-  // Service path guide: solid helper line between path points/segments, rendered above the final figure.
-  overlay.appendChild(svgEl('path', {
-    class: 'service-path-guide',
-    d: state.object.path,
-    transform: geom.transform,
-  }));
+  const overlay = svgEl('g', { class: 'object-edit-overlay', transform: `translate(${fmt(state.object.x)} ${fmt(state.object.y)})` });
 
   const handles = buildHandles(parsed.commands);
+  renderCommandSegmentSelection(overlay, parsed.commands, geom);
   for (const line of handles.lines) {
     const p1 = toGeneratedShapePoint({ x: line.x1, y: line.y1 }, geom);
     const p2 = toGeneratedShapePoint({ x: line.x2, y: line.y2 }, geom);
@@ -621,8 +738,11 @@ function renderObject() {
     });
     circle.addEventListener('mousedown', (event) => {
       event.stopPropagation();
+      state.selectedCommandIndex = point.commandIndex;
+      renderCommandPanel();
       state.drag = { point };
       els.svg.classList.add('dragging');
+      renderObject();
     });
     overlay.appendChild(circle);
   });
@@ -728,6 +848,33 @@ function buildFinalObjectForeignObjectMarkup(x, y, geom, generatedObjectHtml) {
   </foreignObject>`;
 }
 
+function buildObjectGuideBoxForeignObjectMarkup(x, y, geom) {
+  const width = Math.max(1, geom.width);
+  const height = Math.max(1, geom.height);
+
+  // Рамка показывает внешний размер generated_object div: width x height.
+  // Ее нельзя прогонять через matrix(...) из добавитьФигуру(), потому что matrix
+  // относится только к внутреннему path и намеренно уменьшает фигуру под обводку.
+  // Поэтому рамка живет в отдельном foreignObject ровно с размерами объекта,
+  // а внутри рисуется SVG rect по полной области viewBox 0..width / 0..height.
+  return `<foreignObject class="object-guide-foreign-object object-guide-box-foreign-object" x="${fmt(x)}" y="${fmt(y)}" width="${fmt(width)}" height="${fmt(height)}">
+    <div xmlns="http://www.w3.org/1999/xhtml" class="object-guide-foreign" style="position:relative;left:0;top:0;width:${fmt(width)}px;height:${fmt(height)}px;">
+      <svg viewBox="0 0 ${fmt(width)} ${fmt(height)}" preserveAspectRatio="none" style="display:block;width:100%;height:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${fmt(width)}" height="${fmt(height)}" fill="none" stroke="#0088cc" stroke-width="0.5" stroke-dasharray="4 4" opacity="0.75" vector-effect="non-scaling-stroke" shape-rendering="geometricPrecision"></rect></svg>
+    </div>
+  </foreignObject>`;
+}
+
+function buildObjectGuidePathForeignObjectMarkup(x, y, geom, path) {
+  const width = Math.max(1, geom.width);
+  const height = Math.max(1, geom.height);
+  const opacity = geom.borderSize > 0 ? 0.5 : 1;
+  return `<foreignObject class="object-guide-foreign-object object-guide-path-foreign-object" x="${fmt(x)}" y="${fmt(y)}" width="${fmt(width)}" height="${fmt(height)}">
+    <div xmlns="http://www.w3.org/1999/xhtml" class="object-guide-path-foreign" style="position:relative;left:0;top:0;width:${fmt(width)}px;height:${fmt(height)}px;" generated_object>
+      <svg viewBox="0 0 ${fmt(width)} ${fmt(height)}" preserveAspectRatio="none" style="display:block;width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg"><path d="${escapeXml(path)}" transform="${geom.transform}" fill="none" stroke="#0088cc" stroke-width="0.5" opacity="${opacity}" vector-effect="non-scaling-stroke" stroke-linejoin="miter" shape-rendering="geometricPrecision"></path></svg>
+    </div>
+  </foreignObject>`;
+}
+
 function getInsertHallIdSqlValue() {
   const raw = String(els.insertHallId ? els.insertHallId.value : '').trim();
   if (!raw || raw === '$$$') {
@@ -761,7 +908,6 @@ function buildUpdateSql(html, geom) {
   y = ${fmt(state.object.y)},
   width = ${fmt(geom.width)},
   height = ${fmt(geom.height)},
-  type = 0,
   param = '${escapeSqlString(html)}'
 WHERE `;
 }
@@ -1154,7 +1300,10 @@ function commitCommands(commands, selectedIndex = state.selectedCommandIndex, sa
   state.selectedCommandIndex = Math.min(Math.max(selectedIndex, -1), commands.length - 1);
   els.pathInput.value = state.object.path;
   render();
-  if (saveHistory) pushHistory();
+  if (saveHistory) {
+    pushHistory();
+    scrollSelectedCommandIntoView();
+  }
 }
 
 function pointBeforeCommand(commands, commandIndex) {
@@ -1300,6 +1449,8 @@ function renderCommandPanel() {
           els.selectedCommandStatus.textContent = `${index + 1}: ${upper}`;
           els.selectedCommandStatus.className = 'badge badge--ok';
         }
+        renderObject();
+        schedulePersistState();
       });
       input.addEventListener('change', () => {
         const commands = getParsedCommands();
@@ -1317,9 +1468,7 @@ function renderCommandPanel() {
 
     row.addEventListener('click', event => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLButtonElement) return;
-      state.selectedCommandIndex = index;
-      renderCommandPanel();
-      renderObject();
+      selectCommandIndex(index, { scroll: false });
     });
     els.commandsList.appendChild(row);
   });
@@ -1702,8 +1851,13 @@ class TempHallDb {
 
     if (row.id === undefined) row.id = null;
     if (row.id === null || row.id === '' || /^NULL$/i.test(String(row.id))) {
-      if (table === 'place_stool' && meta.marker) {
-        row.id = `#${String(meta.marker).replace(/^#|#$/g, '')}#`;
+      if (table === 'place_stool') {
+        // В SQL генератора id стула обычно NULL, а потом идет маркер
+        // ###new_stool_id_N######. Если маркер почему-то не найден,
+        // используем порядок вставки как new_stool_id_N. Иначе все места
+        // со stool_id=#new_stool_id_2# будут падать на первый стул.
+        const marker = meta.marker || `new_stool_id_${(this.tables[table]?.length || 0) + 1}`;
+        row.id = `#${String(marker).replace(/^#|#$/g, '')}#`;
       } else {
         row.id = this.nextIds[table] || (this.tables[table].length + 1);
       }
@@ -1873,7 +2027,10 @@ function stripSqlComments(text) {
   return String(text)
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*--.*$/gm, '')
-    .replace(/^\s*#(?!new_[a-z0-9_]+#).*$/gim, '');
+    // Маркеры генератора после INSERT выглядят как ###new_stool_id_1######.
+    // Это не SQL-комментарии: они нужны, чтобы связать #new_stool_id_N# в place
+    // с соответствующей строкой place_stool.
+    .replace(/^\s*#(?!#*new_[a-z0-9_]+#).*$/gim, '');
 }
 
 function findStatementEnd(text, start) {
@@ -2183,6 +2340,13 @@ function renderViewPlaceHtml(p) {
   return `<div class="${cls}" style="${style}"><div class="place_text place_text--single" style="${textStyle}">${label}</div></div>`;
 }
 
+function normalizeHallObjectIcons(html) {
+  // Font Awesome теперь подключён локально через fontawesome/css/all.min.css
+  // и webfonts. Не заменяем <i class="fas ..."> на текстовые символы:
+  // иначе объекты со знаками инвалидов меняют метрики и выглядят не как в qt.local.
+  return String(html ?? '');
+}
+
 function renderHallObjectHtml(o, style = 'view') {
   if (!o.param || String(o.param).toLowerCase() === 'null') return '';
   const common = `left:${fmt(o.x)}px;top:${fmt(o.y)}px;width:${fmt(Math.max(o.width, 1))}px;height:${fmt(Math.max(o.height, 1))}px;`;
@@ -2190,7 +2354,7 @@ function renderHallObjectHtml(o, style = 'view') {
   if (Number(o.type) === 1) {
     return `<div class="${cls}" style="${common}"><img src="${escapeXml(o.param)}" style="display:block;max-width:100%;max-height:100%;" /></div>`;
   }
-  return `<div class="${cls}" style="${common}">${o.param}</div>`;
+  return `<div class="${cls}" style="${common}">${normalizeHallObjectIcons(o.param)}</div>`;
 }
 
 function loadHallSqlFromTextarea({ fit = true } = {}) {
@@ -2281,7 +2445,8 @@ els.hallStyle.addEventListener('change', () => { renderHall(); schedulePersistSt
 if (els.sqlMode) els.sqlMode.addEventListener('change', () => { updateSqlModeUi(); updateSql(); schedulePersistState(); });
 if (els.insertHallId) els.insertHallId.addEventListener('input', () => { updateSql(); schedulePersistState(); });
 
-document.getElementById('fitHall').addEventListener('click', fitToHall);
+const fitHallButton = document.getElementById('fitHall');
+if (fitHallButton) fitHallButton.addEventListener('click', fitToHall);
 document.getElementById('renderHallSql').addEventListener('click', () => loadHallSqlFromTextarea({ fit: true }));
 document.getElementById('clearHallSql').addEventListener('click', () => { if (els.hallSqlInput) els.hallSqlInput.value = ''; state.hall = null; els.hallStatus.textContent = 'нет зала'; render(); schedulePersistState(); });
 document.getElementById('fitObjectToPath').addEventListener('click', fitObjectToPath);
@@ -2300,7 +2465,7 @@ if (els.copySql) els.copySql.addEventListener('click', () => copyText(els.sqlOut
 document.getElementById('copyPhp').addEventListener('click', () => copyText(els.phpOutput.value));
 document.getElementById('zoomIn').addEventListener('click', () => zoom(0.85));
 document.getElementById('zoomOut').addEventListener('click', () => zoom(1.15));
-document.getElementById('zoomFit').addEventListener('click', fitToHall);
+document.getElementById('zoomFit').addEventListener('click', () => loadHallSqlFromTextarea({ fit: true }));
 if (els.previewToggle) els.previewToggle.addEventListener('click', () => { state.previewMode = !state.previewMode; renderObject(); schedulePersistState(); });
 
 els.svg.addEventListener('mousedown', event => {
@@ -2324,7 +2489,7 @@ window.addEventListener('mousemove', event => {
     }
     updatePathCommandPoint(state.drag.point, localX, localY);
     state.dragDirty = true;
-    render();
+    scheduleObjectRender();
   } else if (state.pan) {
     const panPoint = screenToSvg(event, state.pan.box);
     const dx = state.pan.start.x - panPoint.x;
@@ -2341,6 +2506,11 @@ window.addEventListener('mouseup', () => {
   state.pan = null;
   els.svg.classList.remove('dragging');
   if (shouldSave) {
+    if (state.dragRenderFrame !== null) {
+      window.cancelAnimationFrame(state.dragRenderFrame);
+      state.dragRenderFrame = null;
+    }
+    render();
     pushHistory();
     schedulePersistState();
   }
